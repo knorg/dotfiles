@@ -1,3 +1,0 @@
-[submodule "/home/mbm/.dotfiles/.config/nvim"]
-	path = /home/mbm/.dotfiles/.config/nvim
-	url = https://github.com/knorg/kickstart.nvim

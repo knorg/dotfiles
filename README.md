@@ -4,6 +4,6 @@ Config für Debian 13 mit i3wm
 - i3status
 - alacritty
 - tmux
-- vim
+- neovim
 - emacs
 - ...
