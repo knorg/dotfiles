@@ -1,0 +1,8 @@
+tags
+test.sh
+spell/
+.DS_Store
+# You can uncomment this yourself if you want to lock the lazy-lock.json,
+# but for kickstart, it makes sense to leave it ignored.
+# lazy-lock.json
+
