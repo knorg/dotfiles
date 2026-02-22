@@ -60,8 +60,9 @@ floating_modifier $mod
 tiling_drag modifier titlebar
 
 # start a terminal
-bindsym $mod+Return exec emacsclient -c
+bindsym $mod+Return exec alacritty
 bindsym $mod+Shift+Return exec alacritty -e btop
+bindcode $mod+51 exec emacsclient -c
 
 # kill focused window
 bindsym $mod+Shift+q kill
@@ -229,6 +230,7 @@ bar {
 }
 
 bindsym $mod+d exec "dmenu_run -nf '#BBBBBB' -nb '#222222' -sb '#265C7C' -sf '#EEEEEE' -p 'dmenu prompt >'"
+bindsym $mod+q exec "rofi -modi window,drun,run -show drun -terminal alacritty"
 
 # Transparency with picom compositor
 exec_always picom -f
