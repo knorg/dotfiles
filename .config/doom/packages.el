@@ -53,3 +53,6 @@
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;; (unpin! t)
 (package! rainbow-mode)
+
+(package! julia-formatter
+  :recipe (:host github :repo "ki-chi/julia-formatter"))
