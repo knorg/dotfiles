@@ -47,7 +47,7 @@ Run `./setup-debian13.sh` without arguments to see all options.
 
 ### Window manager
 - **i3** — tiling window manager with i3status and i3blocks
-- **picom** — compositor (transparency, shadows, fading via `~/.config/picom/picom.conf`)
+- **picom** — compositor (transparency, shadows, fading); configure with `picom-conf`
 - **rofi** — application launcher
 - **feh** — wallpaper
 
@@ -63,8 +63,12 @@ Run `./setup-debian13.sh` without arguments to see all options.
 ### Languages
 - **Julia** — installed via juliaup, Emacs integration
 
+### Networking
+- **gvfs-backends** — virtual filesystem (MTP, SMB, SFTP access in Thunar and other file managers)
+- **smbclient** — SMB/CIFS network shares
+
 ### Tools
-- eza, ripgrep, fd-find, btop, mc, shellcheck, xclip
+- eza, ripgrep, fd-find, btop, mc, shellcheck, xclip, lxappearance
 
 ## Repo structure
 

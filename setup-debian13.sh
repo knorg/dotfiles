@@ -214,6 +214,8 @@ CORE_PACKAGES=(
     unzip
     openssh-server
     xinit            # provides startx (no display manager)
+    gvfs-backends    # virtual filesystem (MTP, SMB, SFTP in file managers)
+    smbclient        # SMB/CIFS network shares
 )
 
 TERMINAL_TOOLS=(
@@ -232,6 +234,7 @@ I3_DESKTOP=(
     i3
     i3blocks
     picom
+    picom-conf
     rofi
     feh
 )
@@ -732,15 +735,32 @@ STOW_CONFLICT_PATHS=(
     "${HOME}/.ICAClient"
 )
 
+# Check if a directory is already managed by stow (contains symlinks)
+# On a fresh install, default config dirs only contain real files.
+# After stow --no-folding, they contain symlinks to dotfiles.
+_is_stow_managed_dir() {
+    local dir="$1"
+    [[ -d "$dir" ]] || return 1
+    [[ -n "$(find "$dir" -mindepth 1 -maxdepth 1 -type l -print -quit 2>/dev/null)" ]]
+}
+
 cleanup_for_stow() {
     info "Checking for files that would conflict with stow..."
 
     local -a conflicts=()
 
     for path in "${STOW_CONFLICT_PATHS[@]}"; do
-        if [[ -e "$path" && ! -L "$path" ]]; then
-            conflicts+=("$path")
+        # Skip if path doesn't exist or is already a symlink
+        [[ -e "$path" ]] || continue
+        [[ -L "$path" ]] && continue
+
+        # With --no-folding, stow creates real dirs with symlinked files inside.
+        # If the dir is already stow-managed, it's not a conflict.
+        if [[ -d "$path" ]] && _is_stow_managed_dir "$path"; then
+            continue
         fi
+
+        conflicts+=("$path")
     done
 
     if [[ ${#conflicts[@]} -eq 0 ]]; then
