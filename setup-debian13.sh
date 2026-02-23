@@ -151,7 +151,7 @@ ${BOLD}Post-install reminders:${NC}
   • Reboot to use console login → startx → i3
   • Run ${BOLD}sudo update-alternatives --config x-session-manager${NC} to choose i3
   • Run ${BOLD}lxappearance${NC} to set the system-wide GTK theme, icons, and fonts
-  • Edit ${BOLD}~/.config/picom/picom.conf${NC} to adjust transparency, shadows, fading
+  • Run ${BOLD}picom-conf${NC} to adjust transparency, shadows, fading
   • In a tmux session: ${BOLD}prefix + I${NC} to install tmux plugins
   • Julia is managed by ${BOLD}juliaup${NC} — run ${BOLD}juliaup status${NC} to see installed versions
 
@@ -813,6 +813,11 @@ install_doom_emacs() {
         return
     fi
 
+    # Stop the daemon — it may be running with stale/broken config.
+    # We never restart it here; setup_emacs_daemon() will enable it
+    # for the next boot/login so it starts with a clean, fully-built state.
+    _stop_emacs_daemon
+
     # Detection: doom creates .local/straight/build-<hash>/ only after
     # packages are successfully built. The .local/ dir alone can exist
     # from a failed or interrupted install.
@@ -822,21 +827,17 @@ install_doom_emacs() {
        && ls "${straight_builds}"/build-* &>/dev/null; then
         ok "Doom Emacs already installed."
         info "Running doom sync to pick up config changes..."
-        _stop_emacs_daemon
         "$doom_bin" sync
-        _start_emacs_daemon
         return
     fi
-
-    # Stop the daemon — it may be running with stale/broken config
-    _stop_emacs_daemon
 
     # Repo cloned but install incomplete — re-run doom install (no re-clone)
     if [[ -x "$doom_bin" ]]; then
         warn "Doom repo present but install incomplete — re-running doom install..."
         "$doom_bin" install
+        info "Running doom sync to finalize..."
+        "$doom_bin" sync
         ok "Doom Emacs installed."
-        _start_emacs_daemon
         return
     fi
 
@@ -852,28 +853,20 @@ install_doom_emacs() {
     info "Running doom install (this may take a few minutes)..."
     "$doom_bin" install
 
+    # doom sync after install ensures all packages are fully built
+    # and native-compiled — without this, first boot often breaks
+    info "Running doom sync to finalize..."
+    "$doom_bin" sync
+
     ok "Doom Emacs installed."
     info "Doom binary: ${doom_bin}"
-    _start_emacs_daemon
 }
 
-# Helpers: stop/start emacs daemon around doom operations
+# Helper: stop emacs daemon before doom operations
 _stop_emacs_daemon() {
     if systemctl --user is-active --quiet emacs 2>/dev/null; then
         info "Stopping emacs daemon for doom operations..."
         systemctl --user stop emacs
-    fi
-}
-
-_start_emacs_daemon() {
-    if systemctl --user is-enabled --quiet emacs 2>/dev/null; then
-        info "Restarting emacs daemon with updated config..."
-        systemctl --user restart emacs
-        if systemctl --user is-active --quiet emacs; then
-            ok "Emacs daemon running."
-        else
-            warn "Emacs daemon failed to start — check 'journalctl --user -u emacs'."
-        fi
     fi
 }
 
@@ -918,19 +911,10 @@ EOF
     systemctl --user daemon-reload
     systemctl --user enable emacs
 
-    # Doom install already (re)started the daemon — just verify state
-    if systemctl --user is-active --quiet emacs; then
-        ok "Emacs daemon is running."
-    else
-        info "Starting emacs daemon..."
-        systemctl --user start emacs
-        if systemctl --user is-active --quiet emacs; then
-            ok "Emacs daemon started."
-        else
-            warn "Emacs daemon not active yet (may need graphical session)."
-        fi
-    fi
-
+    # Don't start the daemon now — doom install/sync just finished and
+    # native compilation may still be settling. The daemon will start
+    # cleanly on next login/reboot with all packages fully built.
+    ok "Emacs daemon enabled (will start on next login)."
     info "Connect with: emacsclient -c"
 }
 
@@ -1138,7 +1122,7 @@ main() {
     install_doom_emacs
     echo ""
 
-    # 11. Emacs daemon (ensure unit exists + enabled; doom already restarted it)
+    # 11. Emacs daemon (enable for next boot — not started now)
     info "--- Emacs Daemon ---"
     setup_emacs_daemon
     echo ""
@@ -1162,7 +1146,7 @@ main() {
     echo "  • Reboot to use console login → startx → i3"
     echo "  • Run ${BOLD}sudo update-alternatives --config x-session-manager${NC} to choose i3"
     echo "  • Run ${BOLD}lxappearance${NC} to set GTK theme, icons, and fonts system-wide"
-    echo "  • Edit ${BOLD}~/.config/picom/picom.conf${NC} to adjust transparency and effects"
+    echo "  • Run ${BOLD}picom-conf${NC} to adjust transparency, shadows, and effects"
     echo "  • In a tmux session: ${BOLD}prefix + I${NC} to install tmux plugins"
     echo "  • Julia is managed by juliaup — run ${BOLD}juliaup status${NC}"
     echo "  • Run ${BOLD}./setup-debian13.sh${NC} for all available options"
