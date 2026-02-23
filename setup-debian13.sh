@@ -788,7 +788,10 @@ deploy_dotfiles() {
 
     info "Running stow..."
     cd "$DOTFILES_DIR"
-    stow -v -t "$HOME" .
+    # --no-folding: never replace a real directory with a symlink.
+    # Without this, stow may "fold" ~/.config into a single symlink
+    # to .dotfiles/.config, destroying configs for Firefox, Thunar, etc.
+    stow --no-folding -v -t "$HOME" .
     ok "Dotfiles deployed via stow."
 }
 
@@ -958,6 +961,8 @@ setup_startx_login() {
 
     # 1. Create ~/.xinitrc
     local xinitrc="${HOME}/.xinitrc"
+    local needs_xinitrc=false
+
     if [[ -f "$xinitrc" ]]; then
         if grep -q 'exec i3' "$xinitrc"; then
             ok "${xinitrc} already starts i3."
@@ -965,6 +970,10 @@ setup_startx_login() {
             warn "${xinitrc} exists but doesn't exec i3 — leaving it alone."
         fi
     else
+        needs_xinitrc=true
+    fi
+
+    if [[ "$needs_xinitrc" == true ]]; then
         info "Creating ${xinitrc}..."
         cat > "$xinitrc" <<'EOF'
 #!/bin/sh
@@ -976,10 +985,28 @@ if [ -d /etc/X11/Xsession.d ]; then
     done
 fi
 
+# Export DISPLAY to systemd user session so user services
+# (e.g. emacs daemon) can open graphical frames.
+# Without a display manager, systemd doesn't know about DISPLAY.
+systemctl --user import-environment DISPLAY XAUTHORITY
+systemctl --user start default.target
+
 exec i3
 EOF
         chmod +x "$xinitrc"
         ok "Created ${xinitrc}."
+    fi
+
+    # Patch existing xinitrc if it's missing the systemd import
+    if [[ -f "$xinitrc" ]] && ! grep -q 'import-environment DISPLAY' "$xinitrc"; then
+        info "Adding systemd DISPLAY import to ${xinitrc}..."
+        sed -i '/^exec i3/i \
+# Export DISPLAY to systemd user session so user services\
+# (e.g. emacs daemon) can open graphical frames.\
+systemctl --user import-environment DISPLAY XAUTHORITY\
+systemctl --user start default.target\
+' "$xinitrc"
+        ok "systemd DISPLAY import added to ${xinitrc}."
     fi
 
     # 2. Ensure .profile has startx block for tty1

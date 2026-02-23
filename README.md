@@ -89,7 +89,7 @@ Flat stow layout — the repo root mirrors `$HOME`:
 └── README.md
 ```
 
-Deploy with: `cd ~/.dotfiles && stow -t ~ .`
+Deploy with: `cd ~/.dotfiles && stow --no-folding -t ~ .`
 
 ## After install
 
