@@ -288,6 +288,127 @@ ALL_PACKAGES=(
     "${HARDWARE[@]}"
 )
 
+# -- Optional packages (interactive selection) --------------------------------
+# Each entry: "label|package_name|repo_setup_function_or_empty"
+
+OPTIONAL_PACKAGES=(
+    "Brave Browser|brave-browser|_setup_brave_repo"
+    "VS Code|code|_setup_vscode_repo"
+    "Dolphin (KDE file manager)|dolphin|"
+    "Konsole (KDE terminal)|konsole|"
+)
+
+_setup_brave_repo() {
+    local keyring="/usr/share/keyrings/brave-browser-archive-keyring.gpg"
+    local list="/etc/apt/sources.list.d/brave-browser.list"
+
+    if [[ -f "$list" ]]; then
+        ok "Brave repository already configured."
+        return
+    fi
+
+    info "Adding Brave browser repository..."
+    sudo curl -fsSLo "$keyring" \
+        https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+
+    echo "deb [signed-by=${keyring} arch=amd64] https://brave-browser-apt-release.s3.brave.com/ stable main" \
+        | sudo tee "$list" >/dev/null
+
+    ok "Brave repository added."
+}
+
+_setup_vscode_repo() {
+    local keyring="/usr/share/keyrings/packages.microsoft.gpg"
+    local list="/etc/apt/sources.list.d/vscode.list"
+
+    if [[ -f "$list" ]]; then
+        ok "VS Code repository already configured."
+        return
+    fi
+
+    info "Adding VS Code repository..."
+    curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
+        | sudo gpg --dearmor -o "$keyring"
+
+    echo "deb [arch=amd64 signed-by=${keyring}] https://packages.microsoft.com/repos/code stable main" \
+        | sudo tee "$list" >/dev/null
+
+    ok "VS Code repository added."
+}
+
+install_optional_packages() {
+    info "Optional packages:"
+    echo ""
+
+    local i=1
+    for entry in "${OPTIONAL_PACKAGES[@]}"; do
+        local label="${entry%%|*}"
+        local pkg="${entry#*|}" ; pkg="${pkg%%|*}"
+        local status=""
+        if dpkg -s "$pkg" &>/dev/null; then
+            status=" ${GREEN}(installed)${NC}"
+        fi
+        echo -e "    ${BOLD}${i})${NC}  ${label}${status}"
+        ((i++))
+    done
+
+    echo ""
+    echo -e "    ${BOLD}0)${NC}  Skip — install none"
+    echo ""
+
+    local reply
+    read -rp "$(echo -e "${YELLOW}[????]${NC}  Enter numbers separated by spaces (e.g. 1 3): ")" reply
+
+    # Skip if empty or 0
+    if [[ -z "$reply" || "$reply" == "0" ]]; then
+        ok "Skipping optional packages."
+        return
+    fi
+
+    local -a repos_added=()
+    local -a pkgs_to_install=()
+
+    for num in $reply; do
+        # Validate
+        if [[ ! "$num" =~ ^[0-9]+$ ]] || (( num < 1 || num > ${#OPTIONAL_PACKAGES[@]} )); then
+            warn "Ignoring invalid selection: ${num}"
+            continue
+        fi
+
+        local entry="${OPTIONAL_PACKAGES[$((num-1))]}"
+        local label="${entry%%|*}"
+        local rest="${entry#*|}"
+        local pkg="${rest%%|*}"
+        local repo_fn="${rest#*|}"
+
+        # Skip if already installed
+        if dpkg -s "$pkg" &>/dev/null; then
+            ok "${label} already installed."
+            continue
+        fi
+
+        # Set up external repo if needed
+        if [[ -n "$repo_fn" ]]; then
+            "$repo_fn"
+            repos_added+=("$pkg")
+        fi
+
+        pkgs_to_install+=("$pkg")
+    done
+
+    if [[ ${#pkgs_to_install[@]} -eq 0 ]]; then
+        ok "Nothing to install."
+        return
+    fi
+
+    # Refresh apt if repos were added
+    if [[ ${#repos_added[@]} -gt 0 ]]; then
+        sudo apt update -qq
+    fi
+
+    install_missing_packages "${pkgs_to_install[@]}"
+}
+
 # -- Remove lightdm -----------------------------------------------------------
 
 remove_lightdm() {
@@ -1097,12 +1218,17 @@ main() {
     install_missing_packages "${ALL_PACKAGES[@]}"
     echo ""
 
-    # 2. Remove lightdm
+    # 2. Optional packages (interactive)
+    info "--- Optional Packages ---"
+    install_optional_packages
+    echo ""
+
+    # 3. Remove lightdm
     info "--- Remove Display Manager ---"
     remove_lightdm
     echo ""
 
-    # 3. Neovim
+    # 4. Neovim
     info "--- Neovim (GitHub Release) ---"
     if [[ "$OPT_NVIM_UPDATE" == true ]]; then
         update_neovim
@@ -1111,22 +1237,22 @@ main() {
     fi
     echo ""
 
-    # 4. tree-sitter CLI
+    # 5. tree-sitter CLI
     info "--- tree-sitter CLI ---"
     install_treesitter_cli
     echo ""
 
-    # 5. Nerd Fonts
+    # 6. Nerd Fonts
     info "--- Nerd Fonts ---"
     install_nerd_fonts
     echo ""
 
-    # 6. Tmux plugin manager
+    # 7. Tmux plugin manager
     info "--- Tmux Plugin Manager ---"
     migrate_tpm
     echo ""
 
-    # 7. HiDPI setup
+    # 8. HiDPI setup
     info "--- HiDPI ---"
     if [[ "$OPT_HIDPI_SKIP" == true ]]; then
         ok "Skipping HiDPI setup (--hidpi-skip)."
@@ -1154,32 +1280,32 @@ main() {
     fi
     echo ""
 
-    # 8. Stow pre-cleanup
+    # 9. Stow pre-cleanup
     info "--- Stow Pre-Cleanup ---"
     cleanup_for_stow
     echo ""
 
-    # 9. Deploy dotfiles (stow from this repo)
+    # 10. Deploy dotfiles (stow from this repo)
     info "--- Dotfiles ---"
     deploy_dotfiles
     echo ""
 
-    # 10. Doom Emacs (needs dotfiles for ~/.config/doom/, restarts daemon)
+    # 11. Doom Emacs (needs dotfiles for ~/.config/doom/, restarts daemon)
     info "--- Doom Emacs ---"
     install_doom_emacs
     echo ""
 
-    # 11. Emacs daemon (enable for next boot — not started now)
+    # 12. Emacs daemon (enable for next boot — not started now)
     info "--- Emacs Daemon ---"
     setup_emacs_daemon
     echo ""
 
-    # 12. Julia
+    # 13. Julia
     info "--- Julia ---"
     install_julia
     echo ""
 
-    # 13. startx + i3 login
+    # 14. startx + i3 login
     info "--- Console Login → i3 ---"
     setup_startx_login
     echo ""

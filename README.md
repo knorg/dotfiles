@@ -19,16 +19,17 @@ The script is idempotent — safe to re-run.
 ## What the setup script does
 
 1. Installs all Debian packages (i3, picom, alacritty, emacs, dev tools, etc.)
-2. Removes lightdm (replaced by console login + `startx`)
-3. Installs Neovim from GitHub releases (not Debian repos)
-4. Installs tree-sitter CLI via npm
-5. Installs CascadiaMono Nerd Font from GitHub
-6. Configures tmux plugin manager (Debian package, symlinked for `prefix + I`)
-7. HiDPI setup — GRUB font + xrandr scaling (auto-detects 4K, asks to confirm)
-8. Deploys dotfiles via `stow`
-9. Installs Doom Emacs (`doom install`) + enables emacs daemon
-10. Installs Julia via juliaup (user-level)
-11. Configures `.profile` + `.xinitrc` for auto-startx on tty1
+2. Offers optional packages (Brave, VS Code, Dolphin, Konsole)
+3. Removes lightdm (replaced by console login + `startx`)
+4. Installs Neovim from GitHub releases (not Debian repos)
+5. Installs tree-sitter CLI via npm
+6. Installs CascadiaMono Nerd Font from GitHub
+7. Configures tmux plugin manager (Debian package, symlinked for `prefix + I`)
+8. HiDPI setup — GRUB font + xrandr scaling (auto-detects 4K, asks to confirm)
+9. Deploys dotfiles via `stow`
+10. Installs Doom Emacs (`doom install` + `doom sync`) + enables emacs daemon
+11. Installs Julia via juliaup (user-level)
+12. Configures `.profile` + `.xinitrc` for auto-startx on tty1
 
 Run `./setup-debian13.sh` without arguments to see all options.
 
@@ -69,6 +70,12 @@ Run `./setup-debian13.sh` without arguments to see all options.
 
 ### Tools
 - eza, ripgrep, fd-find, btop, mc, shellcheck, xclip, lxappearance
+
+### Optional (interactive selection during install)
+- **Brave** — browser (adds external repo)
+- **VS Code** — editor (adds external repo)
+- **Dolphin** — KDE file manager
+- **Konsole** — KDE terminal
 
 ## Repo structure
 
