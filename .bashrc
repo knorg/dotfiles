@@ -94,8 +94,8 @@ alias ll='ls -lh'
 alias la='ls -lah'
 #alias l='ls -CF'
 alias vi=nvim
-alias stow='stow --no-folding -v -t ~ .'
-alias unstow='stow -D -t ~ .'
+alias stowit='stow --no-folding -v -t ~ .'
+alias unstow='stow -D -v -t ~ .'
 
 # Alias definitions.
 # You may want to put all your additions into a separate file like
