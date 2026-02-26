@@ -6,6 +6,8 @@ set -euo pipefail
 # Console login → startx → i3  (no display manager)
 # Config: github.com/knorg/dotfiles.git  +  GNU Stow
 #
+# Neovim and Emacs (Doom) are offered as optional selections.
+#
 # This script lives in the dotfiles repo. Usage:
 #   git clone https://github.com/knorg/dotfiles.git ~/.dotfiles
 #   cd ~/.dotfiles
@@ -41,6 +43,10 @@ OPT_NVIM_ROLLBACK=false
 OPT_HIDPI=false
 OPT_HIDPI_REVERT=false
 OPT_HIDPI_HELP=false
+
+# -- Editor selection (set by install_optional_packages) ---------------------
+OPT_WITH_NEOVIM=false
+OPT_WITH_EMACS=false
 
 # -- Colors for output --------------------------------------------------------
 # ANSI-C quoting ($'...') stores actual escape bytes — works with cat, echo, printf
@@ -104,7 +110,7 @@ parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --install)        OPT_INSTALL=true ;;
-            --nvim-update)    OPT_NVIM_UPDATE=true; OPT_INSTALL=true ;;
+            --nvim-update)    OPT_NVIM_UPDATE=true; OPT_INSTALL=true; OPT_WITH_NEOVIM=true ;;
             --nvim-rollback)  OPT_NVIM_ROLLBACK=true ;;
             --hidpi)          OPT_HIDPI=true ;;
             --hidpi-revert)   OPT_HIDPI_REVERT=true ;;
@@ -133,7 +139,8 @@ ${BOLD}Quick start:${NC}
 
 ${BOLD}Options:${NC}
   ${BOLD}Install${NC}
-    --install           Run full setup (packages, dotfiles, doom, julia, etc.)
+    --install           Run full setup (packages, dotfiles, julia, etc.)
+                        Neovim and Emacs are offered interactively.
     --install --hidpi   Full install including HiDPI configuration
 
   ${BOLD}Neovim${NC}
@@ -154,7 +161,7 @@ ${BOLD}Post-install checklist:${NC}
   • Adjust compositor effects: ${BOLD}picom-conf${NC}
   • Install tmux plugins (in a tmux session): ${BOLD}prefix + I${NC}
   • Check Julia: ${BOLD}juliaup status${NC}
-  • Emacs daemon: ${BOLD}systemctl --user status emacs${NC}
+  • If Emacs was selected: ${BOLD}systemctl --user status emacs${NC}
 
 EOF
 }
@@ -257,17 +264,22 @@ APPEARANCE=(
 )
 
 DEV_TOOLS=(
-    cmake
-    libvterm-dev
-    libtool-bin
-    luarocks
     npm
     shellcheck
     markdown
 )
 
-EMACS=(
+# Editor-specific dependencies (installed only when the editor is selected)
+NEOVIM_DEPS=(
+    cmake
+    luarocks
+)
+
+EMACS_DEPS=(
     emacs
+    cmake
+    libvterm-dev
+    libtool-bin
 )
 
 HARDWARE=(
@@ -285,14 +297,19 @@ ALL_PACKAGES=(
     "${I3_DESKTOP[@]}"
     "${APPEARANCE[@]}"
     "${DEV_TOOLS[@]}"
-    "${EMACS[@]}"
     "${HARDWARE[@]}"
 )
 
 # -- Optional packages (interactive selection) --------------------------------
 # Each entry: "label|package_name|repo_setup_function_or_empty"
+#
+# Virtual packages (prefixed with @) are not installed via apt:
+#   @neovim  — installed from GitHub release
+#   @emacs   — apt deps handled separately via EMACS_DEPS
 
 OPTIONAL_PACKAGES=(
+    "Neovim (GitHub release)|@neovim|"
+    "Emacs + Doom|@emacs|"
     "Brave Browser|brave-browser|_setup_brave_repo"
     "VS Code|code|_setup_vscode_repo"
     "Citrix Workspace|icaclient|_setup_citrix_workspace"
@@ -379,44 +396,53 @@ _setup_citrix_workspace() {
 }
 
 _configure_citrix_hotkeys() {
-    # Ensure Ctrl+F2 exits fullscreen in Citrix sessions.
-    # The ICA client reads hotkey settings from ~/.ICAClient/wfclient.ini
-    # at first launch.  If that file doesn't exist yet, create a minimal
-    # template so the hotkey is ready on first connect.
-    local ica_dir="${HOME}/.ICAClient"
-    local wfclient="${ica_dir}/wfclient.ini"
+    # Enable Ctrl+F2 to toggle fullscreen/window mode in Citrix sessions.
+    # Disabled by default — requires FullScreenShortcutSupport in All_Regions.ini.
+    # See: https://docs.citrix.com/en-us/citrix-workspace-app-for-linux/keyboard.html
 
-    mkdir -p "$ica_dir"
+    local system_ini="/opt/Citrix/ICAClient/config/All_Regions.ini"
+    local user_ini="${HOME}/.ICAClient/All_Regions.ini"
 
-    if [[ -f "$wfclient" ]]; then
-        # File exists — patch the hotkey if not already set
-        if ! grep -q 'Hotkey1Shift=Ctrl' "$wfclient"; then
-            info "Adding Ctrl+F2 fullscreen hotkey to wfclient.ini..."
-            # Insert hotkey settings into [WFClient] section
-            if grep -q '^\[WFClient\]' "$wfclient"; then
-                sed -i '/^\[WFClient\]/a Hotkey1Shift=Ctrl\nHotkey1Char=F2' "$wfclient"
-            else
-                cat >> "$wfclient" <<'HOTKEY'
-
-[WFClient]
-Hotkey1Shift=Ctrl
-Hotkey1Char=F2
-HOTKEY
-            fi
-            ok "Ctrl+F2 fullscreen exit configured."
+    # 1. System-level: set FullScreenShortcutSupport=true
+    if [[ -f "$system_ini" ]]; then
+        if grep -q 'FullScreenShortcutSupport=true' "$system_ini"; then
+            ok "System All_Regions.ini already has FullScreenShortcutSupport=true."
+        elif grep -q 'FullScreenShortcutSupport' "$system_ini"; then
+            info "Updating FullScreenShortcutSupport in system All_Regions.ini..."
+            sudo sed -i 's/FullScreenShortcutSupport=.*/FullScreenShortcutSupport=true/' "$system_ini"
+            ok "System All_Regions.ini updated."
         else
-            ok "Ctrl+F2 fullscreen hotkey already configured."
+            info "Adding FullScreenShortcutSupport to system All_Regions.ini..."
+            sudo sed -i '/\[Client Engine\\Application Launching\]/a FullScreenShortcutSupport=true' "$system_ini"
+            ok "System All_Regions.ini updated."
         fi
-    else
-        # No wfclient.ini yet — create a minimal one
-        info "Creating wfclient.ini with Ctrl+F2 fullscreen hotkey..."
-        cat > "$wfclient" <<'EOF'
-[WFClient]
-Hotkey1Shift=Ctrl
-Hotkey1Char=F2
-EOF
-        ok "Ctrl+F2 fullscreen exit configured."
     fi
+
+    # 2. User-level: if ~/.ICAClient/All_Regions.ini exists (from a previous
+    #    install), it overrides the system file.  Ensure it has the setting too.
+    if [[ -f "$user_ini" ]]; then
+        if grep -q 'FullScreenShortcutSupport=\*' "$user_ini"; then
+            ok "User All_Regions.ini already has FullScreenShortcutSupport=*."
+        elif grep -q 'FullScreenShortcutSupport' "$user_ini"; then
+            info "Updating FullScreenShortcutSupport in user All_Regions.ini..."
+            sed -i 's/FullScreenShortcutSupport=.*/FullScreenShortcutSupport=*/' "$user_ini"
+            ok "User All_Regions.ini updated."
+        elif grep -q '\[Client Engine\\Application Launching\]' "$user_ini"; then
+            info "Adding FullScreenShortcutSupport to user All_Regions.ini..."
+            sed -i '/\[Client Engine\\Application Launching\]/a FullScreenShortcutSupport=*' "$user_ini"
+            ok "User All_Regions.ini updated."
+        else
+            info "Appending FullScreenShortcutSupport section to user All_Regions.ini..."
+            cat >> "$user_ini" <<'CITRIX'
+
+[Client Engine\Application Launching]
+FullScreenShortcutSupport=*
+CITRIX
+            ok "User All_Regions.ini updated."
+        fi
+    fi
+
+    ok "Ctrl+F2 fullscreen toggle enabled."
 }
 
 install_optional_packages() {
@@ -428,7 +454,7 @@ install_optional_packages() {
         local label="${entry%%|*}"
         local pkg="${entry#*|}" ; pkg="${pkg%%|*}"
         local status=""
-        if dpkg -s "$pkg" &>/dev/null; then
+        if _is_pkg_installed "$pkg"; then
             status=" ${GREEN}(installed)${NC}"
         fi
         echo -e "    ${BOLD}${i})${NC}  ${label}${status}"
@@ -465,10 +491,24 @@ install_optional_packages() {
         local repo_fn="${rest#*|}"
 
         # Skip if already installed
-        if dpkg -s "$pkg" &>/dev/null; then
+        if _is_pkg_installed "$pkg"; then
             ok "${label} already installed."
             continue
         fi
+
+        # Handle virtual packages (editors)
+        case "$pkg" in
+            @neovim)
+                OPT_WITH_NEOVIM=true
+                ok "Neovim selected — will install from GitHub."
+                continue
+                ;;
+            @emacs)
+                OPT_WITH_EMACS=true
+                ok "Emacs + Doom selected — will install with dependencies."
+                continue
+                ;;
+        esac
 
         # Set up external repo if needed
         if [[ -n "$repo_fn" ]]; then
@@ -479,7 +519,7 @@ install_optional_packages() {
         pkgs_to_install+=("$pkg")
     done
 
-    if [[ ${#pkgs_to_install[@]} -eq 0 ]]; then
+    if [[ ${#pkgs_to_install[@]} -eq 0 && "$OPT_WITH_NEOVIM" != true && "$OPT_WITH_EMACS" != true ]]; then
         ok "Nothing to install."
         return
     fi
@@ -489,7 +529,19 @@ install_optional_packages() {
         sudo apt update -qq
     fi
 
-    install_missing_packages "${pkgs_to_install[@]}"
+    if [[ ${#pkgs_to_install[@]} -gt 0 ]]; then
+        install_missing_packages "${pkgs_to_install[@]}"
+    fi
+}
+
+# Check if a package (real or virtual) is installed
+_is_pkg_installed() {
+    local pkg="$1"
+    case "$pkg" in
+        @neovim) command -v nvim &>/dev/null ;;
+        @emacs)  command -v emacs &>/dev/null ;;
+        *)       dpkg -s "$pkg" &>/dev/null ;;
+    esac
 }
 
 # -- Remove lightdm -----------------------------------------------------------
@@ -1337,29 +1389,48 @@ main() {
     install_missing_packages "${ALL_PACKAGES[@]}"
     echo ""
 
-    # 2. Optional packages (interactive)
+    # 2. Optional packages (interactive — includes editor selection)
     info "--- Optional Packages ---"
     install_optional_packages
     echo ""
 
-    # 3. Remove lightdm
+    # Auto-detect already-installed editors so re-runs still maintain them
+    # even if the user skips the optional selection prompt.
+    command -v nvim  &>/dev/null && OPT_WITH_NEOVIM=true
+    command -v emacs &>/dev/null && OPT_WITH_EMACS=true
+
+    # 3. Editor dependencies (apt packages for selected editors)
+    if [[ "$OPT_WITH_NEOVIM" == true ]]; then
+        info "--- Neovim Dependencies ---"
+        install_missing_packages "${NEOVIM_DEPS[@]}"
+        echo ""
+    fi
+    if [[ "$OPT_WITH_EMACS" == true ]]; then
+        info "--- Emacs Dependencies ---"
+        install_missing_packages "${EMACS_DEPS[@]}"
+        echo ""
+    fi
+
+    # 4. Remove lightdm
     info "--- Remove Display Manager ---"
     remove_lightdm
     echo ""
 
-    # 4. Neovim
-    info "--- Neovim (GitHub Release) ---"
-    if [[ "$OPT_NVIM_UPDATE" == true ]]; then
-        update_neovim
-    else
-        install_neovim
-    fi
-    echo ""
+    # 5. Neovim
+    if [[ "$OPT_WITH_NEOVIM" == true ]]; then
+        info "--- Neovim (GitHub Release) ---"
+        if [[ "$OPT_NVIM_UPDATE" == true ]]; then
+            update_neovim
+        else
+            install_neovim
+        fi
+        echo ""
 
-    # 5. tree-sitter CLI
-    info "--- tree-sitter CLI ---"
-    install_treesitter_cli
-    echo ""
+        # 6. tree-sitter CLI (used by Neovim tree-sitter)
+        info "--- tree-sitter CLI ---"
+        install_treesitter_cli
+        echo ""
+    fi
 
     # 6. Nerd Fonts
     info "--- Nerd Fonts ---"
@@ -1410,14 +1481,16 @@ main() {
     echo ""
 
     # 11. Doom Emacs (needs dotfiles for ~/.config/doom/, restarts daemon)
-    info "--- Doom Emacs ---"
-    install_doom_emacs
-    echo ""
+    if [[ "$OPT_WITH_EMACS" == true ]]; then
+        info "--- Doom Emacs ---"
+        install_doom_emacs
+        echo ""
 
-    # 12. Emacs daemon (enable for next boot — not started now)
-    info "--- Emacs Daemon ---"
-    setup_emacs_daemon
-    echo ""
+        # 12. Emacs daemon (enable for next boot — not started now)
+        info "--- Emacs Daemon ---"
+        setup_emacs_daemon
+        echo ""
+    fi
 
     # 13. Julia
     info "--- Julia ---"
@@ -1441,7 +1514,9 @@ main() {
     echo "  • Adjust compositor effects: ${BOLD}picom-conf${NC}"
     echo "  • Install tmux plugins (in a tmux session): ${BOLD}prefix + I${NC}"
     echo "  • Check Julia: ${BOLD}juliaup status${NC}"
-    echo "  • Emacs daemon: ${BOLD}systemctl --user status emacs${NC}"
+    if [[ "$OPT_WITH_EMACS" == true ]]; then
+        echo "  • Emacs daemon: ${BOLD}systemctl --user status emacs${NC}"
+    fi
     echo "  • Run ${BOLD}./setup-debian13.sh${NC} for all available options"
     echo ""
 }

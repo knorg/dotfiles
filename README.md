@@ -1,7 +1,8 @@
 # Debian 13 (Trixie) — i3wm Development Environment
 
 Automated setup for a keyboard-driven Linux desktop: console login → `startx` → i3
-window manager, with Neovim, Doom Emacs, Julia, and a curated set of terminal tools.
+window manager, with Julia and a curated set of terminal tools. Neovim and
+Emacs (Doom) are available as optional selections during install.
 
 Everything is managed through GNU Stow so dotfiles stay in one repo and deploy as
 symlinks.
@@ -19,22 +20,25 @@ configs, and backs up any files that would conflict with Stow before deploying.
 
 ## What the Script Does
 
-1. Installs Debian packages (i3, Alacritty, tmux, picom, rofi, dev tools, fonts, …)
-2. Offers optional packages interactively (Brave, VS Code, Citrix Workspace, Dolphin, Konsole)
-3. Removes `lightdm` (no display manager — console login + `startx`)
-4. Installs Neovim from the latest GitHub release
-5. Installs tree-sitter CLI and Nerd Fonts (CascadiaMono)
-6. Configures tmux plugin manager (Debian package + user symlink)
-7. Backs up conflicting files and deploys dotfiles via `stow --no-folding`
-8. Installs Doom Emacs and runs `doom sync`
-9. Enables the Emacs systemd user daemon
+1. Installs core Debian packages (i3, Alacritty, tmux, picom, rofi, dev tools, fonts, …)
+2. Offers optional packages interactively — including **Neovim** and **Emacs (Doom)**, plus Brave, VS Code, Citrix Workspace, Dolphin, Konsole
+3. Installs editor-specific dependencies for any selected editors
+4. Removes `lightdm` (no display manager — console login + `startx`)
+5. If Neovim was selected: installs from the latest GitHub release + tree-sitter CLI
+6. Installs Nerd Fonts (CascadiaMono)
+7. Configures tmux plugin manager (Debian package + user symlink)
+8. Backs up conflicting files and deploys dotfiles via `stow --no-folding`
+9. If Emacs was selected: installs Doom Emacs, runs `doom sync`, enables the systemd user daemon
 10. Installs Julia via juliaup (user-level)
 11. Sets up `~/.xinitrc` and `.profile` for console login → `startx` → i3
+
+On re-runs, already-installed editors are auto-detected and their maintenance
+steps (Neovim version check, `doom sync`, etc.) run without re-selecting them.
 
 ## Usage
 
 ```
-./setup-debian13.sh --install             # full setup (HiDPI skipped)
+./setup-debian13.sh --install             # full setup (editors offered interactively)
 ./setup-debian13.sh --install --hidpi     # full setup with HiDPI configuration
 
 ./setup-debian13.sh --nvim-update         # full setup + update Neovim to latest
@@ -146,10 +150,11 @@ After a fresh install (or a re-run), verify these items:
 - [ ] Adjust compositor effects: `picom-conf`
 - [ ] Install tmux plugins (inside a tmux session): `prefix + I`
 - [ ] Check Julia: `juliaup status`
-- [ ] Verify Emacs daemon: `systemctl --user status emacs`
+- [ ] If Emacs was selected: verify daemon — `systemctl --user status emacs`
 
-On re-runs, the script skips what is already in place. The checklist items above
-are one-time actions — once configured, they persist across re-runs.
+On re-runs, the script skips what is already in place and auto-detects installed
+editors. The checklist items above are one-time actions — once configured, they
+persist across re-runs.
 
 ## Repository Layout
 
