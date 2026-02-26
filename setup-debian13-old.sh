@@ -38,7 +38,7 @@ XRANDR_FILE="/etc/X11/Xsession.d/45custom_xrandr-settings"
 OPT_INSTALL=false
 OPT_NVIM_UPDATE=false
 OPT_NVIM_ROLLBACK=false
-OPT_HIDPI=false
+OPT_HIDPI_SKIP=false
 OPT_HIDPI_REVERT=false
 OPT_HIDPI_HELP=false
 
@@ -106,7 +106,7 @@ parse_args() {
             --install)        OPT_INSTALL=true ;;
             --nvim-update)    OPT_NVIM_UPDATE=true; OPT_INSTALL=true ;;
             --nvim-rollback)  OPT_NVIM_ROLLBACK=true ;;
-            --hidpi)          OPT_HIDPI=true ;;
+            --hidpi-skip)     OPT_HIDPI_SKIP=true; OPT_INSTALL=true ;;
             --hidpi-revert)   OPT_HIDPI_REVERT=true ;;
             --hidpi-help)     OPT_HIDPI_HELP=true ;;
             --help|-h)        ;; # no-op, bare call already shows help
@@ -134,7 +134,7 @@ ${BOLD}Quick start:${NC}
 ${BOLD}Options:${NC}
   ${BOLD}Install${NC}
     --install           Run full setup (packages, dotfiles, doom, julia, etc.)
-    --install --hidpi   Full install including HiDPI configuration
+    --hidpi-skip        Full install but skip HiDPI configuration
 
   ${BOLD}Neovim${NC}
     --nvim-update       Full install + update Neovim to latest GitHub release
@@ -147,14 +147,13 @@ ${BOLD}Options:${NC}
   ${BOLD}General${NC}
     --help, -h          Show this help
 
-${BOLD}Post-install checklist:${NC}
-  • If this is a fresh install, reboot to use console login → startx → i3
-  • Verify i3 is the default: ${BOLD}sudo update-alternatives --config x-session-manager${NC}
-  • Set GTK theme/icons/fonts: ${BOLD}lxappearance${NC}
-  • Adjust compositor effects: ${BOLD}picom-conf${NC}
-  • Install tmux plugins (in a tmux session): ${BOLD}prefix + I${NC}
-  • Check Julia: ${BOLD}juliaup status${NC}
-  • Emacs daemon: ${BOLD}systemctl --user status emacs${NC}
+${BOLD}Post-install reminders:${NC}
+  • Reboot to use console login → startx → i3
+  • Run ${BOLD}sudo update-alternatives --config x-session-manager${NC} to choose i3
+  • Run ${BOLD}lxappearance${NC} to set the system-wide GTK theme, icons, and fonts
+  • Run ${BOLD}picom-conf${NC} to adjust transparency, shadows, fading
+  • In a tmux session: ${BOLD}prefix + I${NC} to install tmux plugins
+  • Julia is managed by ${BOLD}juliaup${NC} — run ${BOLD}juliaup status${NC} to see installed versions
 
 EOF
 }
@@ -295,7 +294,6 @@ ALL_PACKAGES=(
 OPTIONAL_PACKAGES=(
     "Brave Browser|brave-browser|_setup_brave_repo"
     "VS Code|code|_setup_vscode_repo"
-    "Citrix Workspace|icaclient|_setup_citrix_workspace"
     "Dolphin (KDE file manager)|dolphin|"
     "Konsole (KDE terminal)|konsole|"
 )
@@ -336,87 +334,6 @@ _setup_vscode_repo() {
         | sudo tee "$list" >/dev/null
 
     ok "VS Code repository added."
-}
-
-_setup_citrix_workspace() {
-    # Citrix Workspace is not in any apt repo — it's a .deb downloaded
-    # from citrix.com.  Look for a pre-downloaded .deb in ~/Downloads
-    # or in the dotfiles directory.
-    local deb=""
-    for search_dir in "${HOME}/Downloads" "$DOTFILES_DIR"; do
-        local found
-        found=$(find "$search_dir" -maxdepth 1 -name 'icaclient_*.deb' -print -quit 2>/dev/null) || true
-        if [[ -n "$found" ]]; then
-            deb="$found"
-            break
-        fi
-    done
-
-    if [[ -z "$deb" ]]; then
-        warn "No icaclient_*.deb found in ~/Downloads or ${DOTFILES_DIR}."
-        info "Download the .deb from:"
-        info "  https://www.citrix.com/downloads/workspace-app/linux/workspace-app-for-linux-latest.html"
-        info "Then re-run the script."
-        return 1
-    fi
-
-    info "Installing Citrix Workspace from ${deb}..."
-    sudo apt install -f -y "$deb"
-
-    # Link system CA certificates so ICA sessions trust the server
-    local ica_certs="/opt/Citrix/ICAClient/keystore/cacerts"
-    if [[ -d "$ica_certs" ]]; then
-        info "Linking system CA certificates into Citrix keystore..."
-        sudo ln -sf /etc/ssl/certs/*.pem "$ica_certs/" 2>/dev/null || true
-        sudo /opt/Citrix/ICAClient/util/ctx_rehash "$ica_certs" 2>/dev/null || true
-        ok "Citrix CA certificates linked."
-    fi
-
-    # Configure Ctrl+F2 to exit fullscreen (useful inside VM sessions)
-    _configure_citrix_hotkeys
-
-    ok "Citrix Workspace installed."
-}
-
-_configure_citrix_hotkeys() {
-    # Ensure Ctrl+F2 exits fullscreen in Citrix sessions.
-    # The ICA client reads hotkey settings from ~/.ICAClient/wfclient.ini
-    # at first launch.  If that file doesn't exist yet, create a minimal
-    # template so the hotkey is ready on first connect.
-    local ica_dir="${HOME}/.ICAClient"
-    local wfclient="${ica_dir}/wfclient.ini"
-
-    mkdir -p "$ica_dir"
-
-    if [[ -f "$wfclient" ]]; then
-        # File exists — patch the hotkey if not already set
-        if ! grep -q 'Hotkey1Shift=Ctrl' "$wfclient"; then
-            info "Adding Ctrl+F2 fullscreen hotkey to wfclient.ini..."
-            # Insert hotkey settings into [WFClient] section
-            if grep -q '^\[WFClient\]' "$wfclient"; then
-                sed -i '/^\[WFClient\]/a Hotkey1Shift=Ctrl\nHotkey1Char=F2' "$wfclient"
-            else
-                cat >> "$wfclient" <<'HOTKEY'
-
-[WFClient]
-Hotkey1Shift=Ctrl
-Hotkey1Char=F2
-HOTKEY
-            fi
-            ok "Ctrl+F2 fullscreen exit configured."
-        else
-            ok "Ctrl+F2 fullscreen hotkey already configured."
-        fi
-    else
-        # No wfclient.ini yet — create a minimal one
-        info "Creating wfclient.ini with Ctrl+F2 fullscreen hotkey..."
-        cat > "$wfclient" <<'EOF'
-[WFClient]
-Hotkey1Shift=Ctrl
-Hotkey1Char=F2
-EOF
-        ok "Ctrl+F2 fullscreen exit configured."
-    fi
 }
 
 install_optional_packages() {
@@ -918,60 +835,26 @@ revert_hidpi() {
 
 # -- Stow pre-cleanup ---------------------------------------------------------
 # Remove existing files/dirs at stow targets so symlinks can be created.
-# Scans the actual dotfiles repo to determine which paths would conflict.
+# Paths derived from actual dotfiles repo content.
 
-# Build the conflict list dynamically from what's actually in the repo.
-# Stow with --no-folding deploys individual file symlinks, so we check
-# each file's target path under $HOME for real (non-symlink) conflicts.
-_build_stow_conflict_paths() {
-    local -a paths=()
-
-    # Find all files in the dotfiles dir that stow would deploy.
-    # Exclude repo-level files that aren't stow targets.
-    while IFS= read -r -d '' rel_path; do
-        local target="${HOME}/${rel_path}"
-
-        # For files inside directories (e.g. .config/i3/config),
-        # check the top-level directory — if the whole dir is a real
-        # dir with non-symlink content, it's a conflict.
-        # Also check the file itself for top-level dotfiles (.bashrc, etc.).
-        local top_dir
-        top_dir=$(echo "$rel_path" | cut -d'/' -f1-2)
-        # For .config/X paths, the meaningful unit is .config/X
-        if [[ "$rel_path" == .config/* ]]; then
-            top_dir=$(echo "$rel_path" | cut -d'/' -f1-3)
-        fi
-
-        local target_dir="${HOME}/${top_dir}"
-
-        # Add the directory (deduplicated later) or the file itself
-        if [[ "$rel_path" == */* ]]; then
-            paths+=("$target_dir")
-        else
-            paths+=("$target")
-        fi
-    done < <(
-        cd "$DOTFILES_DIR" && \
-        find . -mindepth 1 \
-            -not -path './.git/*' \
-            -not -path './.git' \
-            -not -name 'setup-debian13.sh' \
-            -not -name 'README.md' \
-            -not -name '.gitignore' \
-            -not -name '.gitmodules' \
-            -type f -printf '%P\0'
-    )
-
-    # Deduplicate
-    local -A seen=()
-    STOW_CONFLICT_PATHS=()
-    for p in "${paths[@]}"; do
-        if [[ -z "${seen[$p]+x}" ]]; then
-            seen[$p]=1
-            STOW_CONFLICT_PATHS+=("$p")
-        fi
-    done
-}
+STOW_CONFLICT_PATHS=(
+    # Home-level dotfiles
+    "${HOME}/.bashrc"
+    "${HOME}/.profile"
+    "${HOME}/.tmux.conf"
+    # .config directories (matching dotfiles repo)
+    "${HOME}/.config/i3"
+    "${HOME}/.config/i3status"
+    "${HOME}/.config/i3blocks"
+    "${HOME}/.config/alacritty"
+    "${HOME}/.config/btop"
+    "${HOME}/.config/doom"
+    "${HOME}/.config/mc"
+    "${HOME}/.config/nvim"
+    "${HOME}/.config/picom"
+    # ICAClient (Citrix)
+    "${HOME}/.ICAClient"
+)
 
 # Check if a directory is already managed by stow (contains symlinks)
 # On a fresh install, default config dirs only contain real files.
@@ -984,8 +867,6 @@ _is_stow_managed_dir() {
 
 cleanup_for_stow() {
     info "Checking for files that would conflict with stow..."
-
-    _build_stow_conflict_paths
 
     local -a conflicts=()
 
@@ -1373,7 +1254,9 @@ main() {
 
     # 8. HiDPI setup
     info "--- HiDPI ---"
-    if [[ "$OPT_HIDPI" == true ]]; then
+    if [[ "$OPT_HIDPI_SKIP" == true ]]; then
+        ok "Skipping HiDPI setup (--hidpi-skip)."
+    else
         local do_hidpi=false
 
         if detect_hidpi; then
@@ -1394,8 +1277,6 @@ main() {
         else
             ok "Skipping HiDPI setup."
         fi
-    else
-        ok "Skipping HiDPI setup (use --install --hidpi to configure)."
     fi
     echo ""
 
@@ -1434,14 +1315,13 @@ main() {
     echo ""
     ok "Setup complete!"
     echo ""
-    info "Post-install checklist:"
-    echo "  • If this is a fresh install, reboot to use console login → startx → i3"
-    echo "  • Verify i3 is the default: ${BOLD}sudo update-alternatives --config x-session-manager${NC}"
-    echo "  • Set GTK theme/icons/fonts: ${BOLD}lxappearance${NC}"
-    echo "  • Adjust compositor effects: ${BOLD}picom-conf${NC}"
-    echo "  • Install tmux plugins (in a tmux session): ${BOLD}prefix + I${NC}"
-    echo "  • Check Julia: ${BOLD}juliaup status${NC}"
-    echo "  • Emacs daemon: ${BOLD}systemctl --user status emacs${NC}"
+    info "Post-install reminders:"
+    echo "  • Reboot to use console login → startx → i3"
+    echo "  • Run ${BOLD}sudo update-alternatives --config x-session-manager${NC} to choose i3"
+    echo "  • Run ${BOLD}lxappearance${NC} to set GTK theme, icons, and fonts system-wide"
+    echo "  • Run ${BOLD}picom-conf${NC} to adjust transparency, shadows, and effects"
+    echo "  • In a tmux session: ${BOLD}prefix + I${NC} to install tmux plugins"
+    echo "  • Julia is managed by juliaup — run ${BOLD}juliaup status${NC}"
     echo "  • Run ${BOLD}./setup-debian13.sh${NC} for all available options"
     echo ""
 }

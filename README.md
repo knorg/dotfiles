@@ -1,12 +1,12 @@
-# Dotfiles — Debian 13 (Trixie) + i3wm
+# Debian 13 (Trixie) — i3wm Development Environment
 
-Personal development environment. Console login → `startx` → i3 (no display manager).
+Automated setup for a keyboard-driven Linux desktop: console login → `startx` → i3
+window manager, with Neovim, Doom Emacs, Julia, and a curated set of terminal tools.
 
-Managed with [GNU Stow](https://www.gnu.org/software/stow/) and an automated setup script.
+Everything is managed through GNU Stow so dotfiles stay in one repo and deploy as
+symlinks.
 
-## Install
-
-Start from a fresh Debian 13 install with XFCE desktop (base).
+## Quick Start
 
 ```bash
 git clone https://github.com/knorg/dotfiles.git ~/.dotfiles
@@ -14,108 +14,165 @@ cd ~/.dotfiles
 ./setup-debian13.sh --install
 ```
 
-The script is idempotent — safe to re-run.
+The script is safe to re-run — it skips already-installed packages, detects existing
+configs, and backs up any files that would conflict with Stow before deploying.
 
-## What the setup script does
+## What the Script Does
 
-1. Installs all Debian packages (i3, picom, alacritty, emacs, dev tools, etc.)
-2. Offers optional packages (Brave, VS Code, Dolphin, Konsole)
-3. Removes lightdm (replaced by console login + `startx`)
-4. Installs Neovim from GitHub releases (not Debian repos)
-5. Installs tree-sitter CLI via npm
-6. Installs CascadiaMono Nerd Font from GitHub
-7. Configures tmux plugin manager (Debian package, symlinked for `prefix + I`)
-8. HiDPI setup — GRUB font + xrandr scaling (auto-detects 4K, asks to confirm)
-9. Deploys dotfiles via `stow`
-10. Installs Doom Emacs (`doom install` + `doom sync`) + enables emacs daemon
-11. Installs Julia via juliaup (user-level)
-12. Configures `.profile` + `.xinitrc` for auto-startx on tty1
+1. Installs Debian packages (i3, Alacritty, tmux, picom, rofi, dev tools, fonts, …)
+2. Offers optional packages interactively (Brave, VS Code, Citrix Workspace, Dolphin, Konsole)
+3. Removes `lightdm` (no display manager — console login + `startx`)
+4. Installs Neovim from the latest GitHub release
+5. Installs tree-sitter CLI and Nerd Fonts (CascadiaMono)
+6. Configures tmux plugin manager (Debian package + user symlink)
+7. Backs up conflicting files and deploys dotfiles via `stow --no-folding`
+8. Installs Doom Emacs and runs `doom sync`
+9. Enables the Emacs systemd user daemon
+10. Installs Julia via juliaup (user-level)
+11. Sets up `~/.xinitrc` and `.profile` for console login → `startx` → i3
 
-Run `./setup-debian13.sh` without arguments to see all options.
-
-## Script options
-
-| Option | Description |
-|---|---|
-| `--install` | Full setup |
-| `--hidpi-skip` | Full setup, skip HiDPI configuration |
-| `--nvim-update` | Full setup + update Neovim to latest release |
-| `--nvim-rollback` | Rollback Neovim to previous version (standalone) |
-| `--hidpi-revert` | Remove all HiDPI settings (standalone) |
-| `--hidpi-help` | How to change display resolution (standalone) |
-
-## What's included
-
-### Window manager
-- **i3** — tiling window manager with i3status and i3blocks
-- **picom** — compositor (transparency, shadows, fading); configure with `picom-conf`
-- **rofi** — application launcher
-- **feh** — wallpaper
-
-### Terminal
-- **Alacritty** — GPU-accelerated terminal (`~/.config/alacritty/alacritty.toml`)
-- **tmux** — terminal multiplexer + tpm plugins
-- **CascadiaMono Nerd Font** — patched with icons for devtools
-
-### Editors
-- **Doom Emacs** — config in `~/.config/doom/`, includes custom i3wm-config-mode
-- **Neovim** — kickstart-based config (`~/.config/nvim/`), TJ DeVries template
-
-### Languages
-- **Julia** — installed via juliaup, Emacs integration
-
-### Networking
-- **gvfs-backends** — virtual filesystem (MTP, SMB, SFTP access in Thunar and other file managers)
-- **smbclient** — SMB/CIFS network shares
-
-### Tools
-- eza, ripgrep, fd-find, btop, mc, shellcheck, xclip, lxappearance
-
-### Optional (interactive selection during install)
-- **Brave** — browser (adds external repo)
-- **VS Code** — editor (adds external repo)
-- **Dolphin** — KDE file manager
-- **Konsole** — KDE terminal
-
-## Repo structure
-
-Flat stow layout — the repo root mirrors `$HOME`:
+## Usage
 
 ```
-.dotfiles/
+./setup-debian13.sh --install             # full setup (HiDPI skipped)
+./setup-debian13.sh --install --hidpi     # full setup with HiDPI configuration
+
+./setup-debian13.sh --nvim-update         # full setup + update Neovim to latest
+./setup-debian13.sh --nvim-rollback       # restore previous Neovim version
+
+./setup-debian13.sh --hidpi-revert        # undo HiDPI changes
+./setup-debian13.sh --hidpi-help          # display resolution tips
+
+./setup-debian13.sh                       # show help
+```
+
+## Neovim
+
+Configuration based on [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim)
+by TJ DeVries, extended with additional plugins and keybindings.
+
+### Configured Plugins
+
+| Plugin | Purpose |
+|---|---|
+| **Lazy.nvim** | Plugin manager with lazy-loading |
+| **Telescope** | Fuzzy finder (files, grep, buffers, LSP symbols) with fzf-native and ui-select |
+| **blink.cmp** | Autocompletion engine with LSP, snippet, and path sources |
+| **mini.files** | Lightweight file browser |
+| **mini.operators** | Replace and exchange text operators |
+| **Neogit** | Git interface (Magit-inspired) |
+| **tree-sitter** | Incremental syntax highlighting |
+| **which-key** | Displays available keybindings after pressing a leader key |
+| **LSP** (built-in) | Language server support for completions, diagnostics, go-to-definition |
+
+The full configuration lives in `.config/nvim/init.lua`. Plugins are pinned via
+`lazy-lock.json` for reproducibility across machines.
+
+## Emacs
+
+The Emacs configuration is built on top of
+[Doom Emacs](https://github.com/doomemacs/doomemacs) and lives in `.config/doom/`.
+It adds custom behaviour on top of what Doom provides:
+
+- **Dark/light theme toggle** — switch between a Doom theme and its `-light` variant
+- **Julia IDE** — LSP via eglot, tree-sitter highlighting, vterm REPL
+- **Relative line numbers** enabled by default
+- **Magit** for Git operations
+
+The **i3wm config syntax highlighting** (`i3wm-config-mode`) is a standalone major mode
+and is _not_ part of the Doom Emacs layer — it provides custom font-lock rules with
+monochrome rendering for uncommented lines and proper handling of `exec_always`,
+`for_window`, and inline comments.
+
+### Emacs Daemon
+
+Emacs runs as a **systemd user service** so it stays loaded in the background and
+new frames open instantly. The setup script enables the service automatically.
+
+**Start / stop / check the daemon:**
+
+```bash
+systemctl --user start emacs       # start now
+systemctl --user stop emacs        # stop now
+systemctl --user restart emacs     # restart (e.g. after doom sync)
+systemctl --user status emacs      # check if running
+```
+
+**Open a new frame** (connects to the running daemon):
+
+```bash
+emacsclient -c                     # graphical frame
+emacsclient -t                     # terminal frame
+```
+
+The daemon starts automatically on login via `systemctl --user enable emacs`
+(configured by the setup script). The `~/.xinitrc` exports `DISPLAY` into the
+systemd user session so graphical frames work without a display manager.
+
+After running `doom sync` or changing your Doom configuration, restart the daemon
+so it picks up the changes:
+
+```bash
+doom sync && systemctl --user restart emacs
+```
+
+## HiDPI
+
+HiDPI configuration is **not applied by default**. Use `--install --hidpi` to
+enable it during setup. This is useful for 4K laptop panels where native
+resolution makes everything too small for an i3/X11 desktop without scaling.
+
+When enabled, the script:
+
+- Generates a larger GRUB font (DejaVu Sans Mono, 24pt)
+- Sets `GRUB_GFXMODE=1920x1080` for a readable boot menu
+- Creates `/etc/X11/Xsession.d/45custom_xrandr-settings` with a scaled-down
+  resolution via `xrandr`
+
+**Manage HiDPI after install:**
+
+```
+./setup-debian13.sh --hidpi-help      # tips for changing resolution
+./setup-debian13.sh --hidpi-revert    # remove all HiDPI changes
+```
+
+## Post-Install Checklist
+
+After a fresh install (or a re-run), verify these items:
+
+- [ ] Reboot (first install only — activates console login → startx → i3)
+- [ ] Choose i3 as the default session: `sudo update-alternatives --config x-session-manager`
+- [ ] Set GTK theme, icons, and fonts: `lxappearance`
+- [ ] Adjust compositor effects: `picom-conf`
+- [ ] Install tmux plugins (inside a tmux session): `prefix + I`
+- [ ] Check Julia: `juliaup status`
+- [ ] Verify Emacs daemon: `systemctl --user status emacs`
+
+On re-runs, the script skips what is already in place. The checklist items above
+are one-time actions — once configured, they persist across re-runs.
+
+## Repository Layout
+
+```
+~/.dotfiles/
 ├── .bashrc
 ├── .profile
 ├── .tmux.conf
 ├── .config/
 │   ├── alacritty/
-│   ├── btop/
-│   ├── doom/          # Doom Emacs config (init.el, packages.el, etc.)
-│   ├── i3/            # i3 config + lock.sh
-│   ├── i3blocks/
+│   ├── doom/           # Doom Emacs config (init.el, config.el, packages.el)
+│   ├── i3/             # i3wm config
 │   ├── i3status/
+│   ├── i3blocks/
 │   ├── mc/
-│   ├── nvim/          # Neovim kickstart config
+│   ├── nvim/           # Neovim config (init.lua)
 │   └── picom/
-├── setup-debian13.sh
-└── README.md
+└── setup-debian13.sh   # this script
 ```
 
-Deploy with: `cd ~/.dotfiles && stow --no-folding -t ~ .`
-
-## After install
-
-```bash
-# Choose i3 as the session manager
-sudo update-alternatives --config x-session-manager
-
-# Set GTK theme, icons, and fonts
-lxappearance
-
-# Install tmux plugins
-# (inside tmux) prefix + I
-
-# Adjust transparency
-picom-conf
-```
-
-Then reboot.
+Files are deployed to `$HOME` via `stow --no-folding .` which creates per-file
+symlinks inside real directories, keeping configs for other applications
+(Firefox, Thunar, …) intact. Before deploying, the script scans the repo to
+find which target paths already exist as real files and offers to back them up —
+no hardcoded list, so adding or removing directories from the repo is all that's
+needed.
