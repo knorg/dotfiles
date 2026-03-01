@@ -74,6 +74,9 @@ bindsym $mod+Shift+q kill
 # switch to keybaord layout US intl
 bindsym $mod+i exec "setxkbmap -layout us -variant intl && notify-send 'Keyboard: US Intl'"
 
+# switch to keybaord layout DE
+bindsym $mod+Shift+i exec "setxkbmap -layout de && notify-send 'Keyboard: DE'"
+
 # switch to keybaord layout US
 bindsym $mod+u exec "setxkbmap -layout us && notify-send 'Keyboard: US'"
 

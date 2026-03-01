@@ -252,10 +252,17 @@ APPEARANCE=(
     arc-theme
     greybird-gtk-theme
     blackbird-gtk-theme
+    bluebird-gtk-theme
     darkcold-gtk-theme
     darkfire-gtk-theme
     darkblood-gtk-theme
+    numix-gtk-theme
+    orchis-gtk-theme
     numix-icon-theme
+    numix-icon-theme-circle
+    faenza-icon-theme
+    moka-icon-theme
+    elementary-xfce-icon-theme
     papirus-icon-theme
     fonts-font-awesome
     fonts-symbola
