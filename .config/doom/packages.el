@@ -57,5 +57,8 @@
 (package! julia-formatter
   :recipe (:host github :repo "ki-chi/julia-formatter"))
 
+(package! denote)
+(package! consult-denote)
+
 (package! ef-themes)
 (package! doric-themes)

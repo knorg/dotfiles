@@ -161,3 +161,51 @@ e80004e80004e80004;;   `require' or `use-package'.
 
 (after! julia-repl
   (julia-repl-set-terminal-backend 'vterm))
+(use-package! denote
+  :defer t
+  :custom
+  ;; Where your notes live
+  (denote-directory (expand-file-name "~/Notes/"))
+
+  ;; File type — options: 'org 'markdown-yaml 'markdown-toml 'text
+  ;; (denote-file-type 'org)
+
+  ;; Prompts shown when creating a note
+  (denote-prompts '(title keywords))
+
+  ;; Date format in filenames (default is fine)
+  ;; (denote-date-format nil)
+
+  ;; Org front-matter exclusions (optional)
+  (denote-org-front-matter
+   "#+title:      %s
+#+date:       %s
+#+filetags:   %s
+#+identifier: %s\n")
+
+  :config
+  ;; Auto-rename buffer names to match denote convention
+  (denote-rename-buffer-mode 1)
+
+  ;; Buttonize denote links in org/text buffers
+  (add-hook 'find-file-hook #'denote-link-buttonize-buffer)
+
+  ;; Keep backlinks up to date on save (optional but useful)
+  (add-hook 'after-save-hook #'denote-update-dired-buffers))
+
+(map! :leader
+      (:prefix ("n d" . "denote")
+       :desc "New note"              "n" #'denote
+       :desc "New note (template)"   "t" #'denote-template
+       :desc "Open or create"        "o" #'denote-open-or-create
+       :desc "Insert link"           "i" #'denote-link
+       :desc "Insert links (dired)"  "I" #'denote-link-dired-marked-notes
+       :desc "Backlinks buffer"      "b" #'denote-backlinks
+       :desc "Find file"             "f" #'denote-find-file
+       :desc "Rename file"           "r" #'denote-rename-file
+       :desc "Grep notes"            "g" #'denote-grep))
+
+(use-package! consult-denote
+  :after denote
+  :config
+  (consult-denote-mode 1))
