@@ -67,6 +67,21 @@ Does nothing if no counterpart exists."
        (setq doom-theme (intern name))
        (message "No light/dark variant found for %s" name)))))
 
+(after! julia-mode
+  (add-hook 'julia-mode-hook
+            (lambda ()
+              (font-lock-add-keywords nil
+                '(("\\<\\([a-zA-Z_][a-zA-Z0-9_!]*\\)\\.?(" 1 'font-lock-function-call-face prepend))
+                'append)
+              (font-lock-flush))
+            'append))(after! julia-mode
+  (add-hook 'julia-mode-hook
+            (lambda ()
+              (font-lock-add-keywords nil
+                '(("\\<\\([a-zA-Z_][a-zA-Z0-9_!]*\\)\\.?(" 1 'font-lock-function-call-face prepend))
+                'append)
+              (font-lock-flush))
+            'append))(map! :leader
       :desc "Toggle dark/light theme"
       "t L" #'my/toggle-dark-light-theme)
 
@@ -161,6 +176,16 @@ e80004e80004e80004;;   `require' or `use-package'.
 
 (after! julia-repl
   (julia-repl-set-terminal-backend 'vterm))
+
+(after! julia-mode
+  (add-hook 'julia-mode-hook
+            (lambda ()
+              (font-lock-add-keywords nil
+                '(("\\<\\([a-zA-Z_][a-zA-Z0-9_!]*\\)\\.?(" 1 'font-lock-function-call-face prepend))
+                'append)
+              (font-lock-flush))
+            'append))
+
 (use-package! denote
   :defer t
   :custom
