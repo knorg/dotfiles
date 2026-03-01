@@ -273,6 +273,40 @@ require('lazy').setup({
   -- options to `gitsigns.nvim`.
   --
   -- See `:help gitsigns` to understand what the configuration keys do
+  {
+    'Vigemus/iron.nvim',
+    keys = {
+      { '<leader>rs', '<cmd>IronRepl<CR>', desc = '[R]epl [S]tart' },
+      { '<leader>rr', '<cmd>IronRestart<CR>', desc = '[R]epl [R]estart' },
+      { '<leader>rf', '<cmd>IronFocus<CR>', desc = '[R]epl [F]ocus' },
+      { '<leader>rh', '<cmd>IronHide<CR>', desc = '[R]epl [H]ide' },
+    },
+    config = function()
+      require('iron.core').setup {
+        config = {
+          scratch_repl = true,
+          repl_definition = {
+            julia = {
+              command = { 'julia', '--project=@.', '-e', 'using Revise; println("Revise loaded"); using OhMyREPL' },
+            },
+          },
+          repl_open_cmd = require('iron.view').split.vertical.botright(80),
+        },
+        keymaps = {
+          send_motion = '<leader>rm',
+          visual_send = '<leader>rm',
+          send_file = '<leader>ra',
+          send_line = '<leader>rl',
+          send_paragraph = '<leader>rp',
+          send_until_cursor = '<leader>ru',
+          cr = '<leader>r<CR>',
+          interrupt = '<leader>r<space>',
+          exit = '<leader>rq',
+        },
+      }
+    end,
+  },
+
   { -- Adds git related signs to the gutter, as well as utilities for managing changes
     'lewis6991/gitsigns.nvim',
     opts = {
@@ -336,6 +370,7 @@ require('lazy').setup({
         { '<leader>t', group = '[T]oggle' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
         { '<leader>g', group = '[G]it' },
+        { '<leader>r', group = '[R]epl' },
       },
     },
   },
@@ -650,6 +685,7 @@ require('lazy').setup({
       vim.list_extend(ensure_installed, {
         'lua-language-server', -- Lua Language server
         'stylua', -- Used to format Lua code
+        'julia-lsp',
         -- You can add other tools here that you want Mason to install
       })
 
@@ -686,6 +722,17 @@ require('lazy').setup({
           Lua = {},
         },
       })
+      vim.lsp.config('julials', {
+        settings = {
+          julia = {
+            symbolCacheDownload = true,
+            lint = {
+              missingrefs = 'all',
+            },
+          },
+        },
+      })
+      vim.lsp.enable 'julials'
       vim.lsp.enable 'lua_ls'
     end,
   },
@@ -905,7 +952,7 @@ require('lazy').setup({
   { -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
     config = function()
-      local filetypes = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' }
+      local filetypes = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'julia' }
       require('nvim-treesitter').install(filetypes)
       vim.api.nvim_create_autocmd('FileType', {
         pattern = filetypes,
