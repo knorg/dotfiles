@@ -56,3 +56,6 @@
 
 (package! julia-formatter
   :recipe (:host github :repo "ki-chi/julia-formatter"))
+
+(package! ef-themes)
+(package! doric-themes)

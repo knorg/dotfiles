@@ -32,44 +32,47 @@
 ;; There are two ways to load a theme. Both assume the theme is installed and
 ;; available. You can either set `doom-theme' or manually load a theme with the
 ;; `load-theme' function. This is the default:
-(setq doom-theme 'doom-one)
+;; (setq doom-theme 'doom-one)
+;; (setq doom-theme 'doom-acario-dark)
+;; (setq doom-theme 'ef-trio-dark)
+(setq doom-theme 'modus-vivendi-tinted)
 
 ;; Toggle between dark/light variant of current theme
-(defvar my/--previous-theme nil
-  "Stores the theme we toggled away from.")
-
 (defun my/toggle-dark-light-theme ()
-  "Toggle between dark and light variants of the current Doom theme."
+  "Toggle between dark and light variants of the current theme.
+Supports doom-themes, ef-themes, and modus-themes.
+Does nothing if no counterpart exists."
   (interactive)
   (let* ((name (symbol-name doom-theme))
          (new (cond
-               ;; If we have a stored previous theme, go back to it
-               (my/--previous-theme
-                (prog1 my/--previous-theme
-                  (setq my/--previous-theme nil)))
-               ;; -light → -dark
+               ;; modus: operandi ↔ vivendi
+               ((string-match "\\`\\(modus-\\)operandi\\(.*\\)\\'" name)
+                (intern (concat (match-string 1 name) "vivendi" (match-string 2 name))))
+               ((string-match "\\`\\(modus-\\)vivendi\\(.*\\)\\'" name)
+                (intern (concat (match-string 1 name) "operandi" (match-string 2 name))))
+               ;; -light ↔ -dark (doom + ef)
                ((string-suffix-p "-light" name)
                 (intern (concat (string-remove-suffix "-light" name) "-dark")))
-               ;; -dark → -light
                ((string-suffix-p "-dark" name)
                 (intern (concat (string-remove-suffix "-dark" name) "-light")))
-               ;; no suffix → -light
+               ;; no suffix → try -light
                (t
                 (intern (concat name "-light"))))))
-    (condition-case err
+    (condition-case nil
         (progn
-          (setq my/--previous-theme doom-theme)
           (setq doom-theme new)
           (load-theme new t)
           (message "Switched to %s" new))
       (error
-       (setq doom-theme my/--previous-theme
-             my/--previous-theme nil)
-       (message "Theme %s not found" new)))))
+       (setq doom-theme (intern name))
+       (message "No light/dark variant found for %s" name)))))
 
-(map! :leader
       :desc "Toggle dark/light theme"
       "t L" #'my/toggle-dark-light-theme)
+
+(after! doom-themes
+  (custom-set-faces!
+    '(font-lock-keyword-face :foreground "#e80004")))
 
 ;; This determines the style of line numbers in effect. If set to `nil', line
 ;; numbers are disabled. For relative line numbers, set this to `relative'.
@@ -99,7 +102,7 @@
 ;; - `load!' for loading external *.el files relative to this one
 ;; - `add-load-path!' for adding directories to the `load-path', relative to
 ;;   this file. Emacs searches the `load-path' when you load packages with
-;;   `require' or `use-package'.
+e80004e80004e80004;;   `require' or `use-package'.
 ;; - `map!' for binding new keys
 ;;
 ;; To get information about any of these functions/macros, move the cursor over
