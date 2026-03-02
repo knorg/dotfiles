@@ -67,21 +67,7 @@ Does nothing if no counterpart exists."
        (setq doom-theme (intern name))
        (message "No light/dark variant found for %s" name)))))
 
-(after! julia-mode
-  (add-hook 'julia-mode-hook
-            (lambda ()
-              (font-lock-add-keywords nil
-                '(("\\<\\([a-zA-Z_][a-zA-Z0-9_!]*\\)\\.?(" 1 'font-lock-function-call-face prepend))
-                'append)
-              (font-lock-flush))
-            'append))(after! julia-mode
-  (add-hook 'julia-mode-hook
-            (lambda ()
-              (font-lock-add-keywords nil
-                '(("\\<\\([a-zA-Z_][a-zA-Z0-9_!]*\\)\\.?(" 1 'font-lock-function-call-face prepend))
-                'append)
-              (font-lock-flush))
-            'append))(map! :leader
+(map! :leader
       :desc "Toggle dark/light theme"
       "t L" #'my/toggle-dark-light-theme)
 
@@ -117,7 +103,7 @@ Does nothing if no counterpart exists."
 ;; - `load!' for loading external *.el files relative to this one
 ;; - `add-load-path!' for adding directories to the `load-path', relative to
 ;;   this file. Emacs searches the `load-path' when you load packages with
-e80004e80004e80004;;   `require' or `use-package'.
+;;   `require' or `use-package'.
 ;; - `map!' for binding new keys
 ;;
 ;; To get information about any of these functions/macros, move the cursor over
@@ -187,36 +173,14 @@ e80004e80004e80004;;   `require' or `use-package'.
             'append))
 
 (use-package! denote
-  :defer t
-  :custom
-  ;; Where your notes live
-  (denote-directory (expand-file-name "~/Notes/"))
-
-  ;; File type — options: 'org 'markdown-yaml 'markdown-toml 'text
-  ;; (denote-file-type 'org)
-
-  ;; Prompts shown when creating a note
-  (denote-prompts '(title keywords))
-
-  ;; Date format in filenames (default is fine)
-  ;; (denote-date-format nil)
-
-  ;; Org front-matter exclusions (optional)
-  (denote-org-front-matter
-   "#+title:      %s
-#+date:       %s
-#+filetags:   %s
-#+identifier: %s\n")
-
+  :commands (denote denote-template denote-open-or-create denote-link
+             denote-link-dired-marked-notes denote-backlinks
+             denote-find-file denote-rename-file denote-grep)
   :config
-  ;; Auto-rename buffer names to match denote convention
-  (denote-rename-buffer-mode 1)
-
-  ;; Buttonize denote links in org/text buffers
-  (add-hook 'find-file-hook #'denote-link-buttonize-buffer)
-
-  ;; Keep backlinks up to date on save (optional but useful)
-  (add-hook 'after-save-hook #'denote-update-dired-buffers))
+  (setq denote-directory (expand-file-name "~/Notes/")
+        denote-file-type 'org
+        denote-prompts '(title keywords))
+  (denote-rename-buffer-mode 1))
 
 (map! :leader
       (:prefix ("n d" . "denote")
