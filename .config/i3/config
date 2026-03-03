@@ -273,6 +273,21 @@ bindsym XF86AudioMute exec --no-startup-id pactl set-sink-mute @DEFAULT_SINK@ to
 # PulseAudio mute microphone
 bindsym XF86AudioMicMute exec --no-startup-id pactl set-source-mute @DEFAULT_SOURCE@ toggle && $refresh_i3status
 
+# Screenshot full screen → clipboard
+bindsym Print exec --no-startup-id maim | xclip -selection clipboard -t image/png
+
+# Screenshot selected region → clipboard
+bindsym Shift+Print exec --no-startup-id maim -s | xclip -selection clipboard -t image/png
+
+# Screenshot active window → clipboard
+bindsym $mod+Print exec --no-startup-id maim -i $(xdotool getactivewindow) | xclip -selection clipboard -t image/png
+
+# Screenshot full screen → file
+bindsym Ctrl+Print exec --no-startup-id maim ~/Pictures/screenshot-$(date +%Y%m%d-%H%M%S).png
+
+# Screenshot selected region → file
+bindsym Ctrl+Shift+Print exec --no-startup-id maim -s ~/Pictures/screenshot-$(date +%Y%m%d-%H%M%S).png
+
 # default gaps
 gaps inner 15
 gaps outer 3
