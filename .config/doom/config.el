@@ -172,27 +172,26 @@ Does nothing if no counterpart exists."
               (font-lock-flush))
             'append))
 
-(use-package! denote
-  :commands (denote denote-template denote-open-or-create denote-link
-             denote-link-dired-marked-notes denote-backlinks
-             denote-find-file denote-rename-file denote-grep)
-  :config
-  (setq denote-directory (expand-file-name "~/Notes/")
-        denote-file-type 'org
-        denote-prompts '(title keywords))
-  (denote-rename-buffer-mode 1))
+(require 'denote)
+(setq denote-directory (expand-file-name "~/Notes/")
+      denote-file-type 'org
+      denote-prompts '(title keywords))
+(denote-rename-buffer-mode 1)
 
 (map! :leader
       (:prefix ("n d" . "denote")
        :desc "New note"              "n" #'denote
-       :desc "New note (template)"   "t" #'denote-template
        :desc "Open or create"        "o" #'denote-open-or-create
+       :desc "Grep notes"            "g" #'denote-grep
        :desc "Insert link"           "i" #'denote-link
-       :desc "Insert links (dired)"  "I" #'denote-link-dired-marked-notes
-       :desc "Backlinks buffer"      "b" #'denote-backlinks
-       :desc "Find file"             "f" #'denote-find-file
+       :desc "Link or create"        "l" #'denote-link-or-create
+       :desc "Backlinks"             "b" #'denote-backlinks
+       :desc "Find backlink"         "B" #'denote-find-backlink
        :desc "Rename file"           "r" #'denote-rename-file
-       :desc "Grep notes"            "g" #'denote-grep))
+       :desc "Add keywords"          "k" #'denote-keywords-add
+       :desc "Remove keywords"       "K" #'denote-keywords-remove
+       :desc "Subdirectory note"     "s" #'denote-subdirectory))
+
 
 (use-package! consult-denote
   :after denote
