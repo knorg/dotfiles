@@ -288,6 +288,9 @@ bindsym Ctrl+Print exec --no-startup-id maim ~/Pictures/screenshot-$(date +%Y%m%
 # Screenshot selected region → file
 bindsym Ctrl+Shift+Print exec --no-startup-id maim -s ~/Pictures/screenshot-$(date +%Y%m%d-%H%M%S).png
 
+# Toggle Webcam preview
+bindsym $mod+c exec --no-startup-id mpv --title="webcam" av://v4l2:/dev/video0
+
 # default gaps
 gaps inner 15
 gaps outer 3
