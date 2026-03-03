@@ -197,3 +197,33 @@ Does nothing if no counterpart exists."
   :after denote
   :config
   (consult-denote-mode 1))
+
+(after! org
+  ;; Scan both org/ and Denote notes for agenda items
+  (setq org-agenda-files '("~/org/" "~/Notes/"))
+
+  ;; TODO workflow states
+  (setq org-todo-keywords
+        '((sequence "TODO(t)" "NEXT(n)" "WAITING(w)" "|" "DONE(d)" "CANCELLED(c)")))
+
+  ;; Log timestamps when tasks are completed
+  (setq org-log-done 'time)
+
+  ;; Show agenda starting from today, not Monday
+  (setq org-agenda-start-on-weekday nil)
+
+  ;; Warn about upcoming deadlines 7 days out
+  (setq org-deadline-warning-days 7)
+
+  ;; Custom agenda views
+  (setq org-agenda-custom-commands
+        '(("d" "Dashboard"
+           ((agenda "" ((org-agenda-span 1)
+                        (org-agenda-overriding-header "Today")))
+            (todo "NEXT"   ((org-agenda-overriding-header "Next Actions")))
+            (todo "WAITING" ((org-agenda-overriding-header "Waiting On")))))
+
+          ("w" "Weekly Review"
+           ((agenda "" ((org-agenda-span 7)))
+            (todo "TODO" ((org-agenda-overriding-header "All TODOs")))
+            (todo "WAITING" ((org-agenda-overriding-header "Waiting On"))))))))
