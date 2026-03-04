@@ -6,7 +6,7 @@ set -euo pipefail
 # Console login → startx → i3  (no display manager)
 # Config: github.com/knorg/dotfiles.git  +  GNU Stow
 #
-# Neovim and Emacs (Doom) are offered as optional selections.
+# Neovim, Emacs (Doom), and Tmux are offered as optional selections.
 #
 # This script lives in the dotfiles repo. Usage:
 #   git clone https://github.com/knorg/dotfiles.git ~/.dotfiles
@@ -44,9 +44,10 @@ OPT_HIDPI=false
 OPT_HIDPI_REVERT=false
 OPT_HIDPI_HELP=false
 
-# -- Editor selection (set by install_optional_packages) ---------------------
+# -- Editor/tool selection (set by install_optional_packages) ----------------
 OPT_WITH_NEOVIM=false
 OPT_WITH_EMACS=false
+OPT_WITH_TMUX=false
 
 # -- Colors for output --------------------------------------------------------
 # ANSI-C quoting ($'...') stores actual escape bytes — works with cat, echo, printf
@@ -140,7 +141,7 @@ ${BOLD}Quick start:${NC}
 ${BOLD}Options:${NC}
   ${BOLD}Install${NC}
     --install           Run full setup (packages, dotfiles, julia, etc.)
-                        Neovim and Emacs are offered interactively.
+                        Neovim, Emacs, and Tmux are offered interactively.
     --install --hidpi   Full install including HiDPI configuration
 
   ${BOLD}Neovim${NC}
@@ -159,7 +160,7 @@ ${BOLD}Post-install checklist:${NC}
   • Verify i3 is the default: ${BOLD}sudo update-alternatives --config x-session-manager${NC}
   • Set GTK theme/icons/fonts: ${BOLD}lxappearance${NC}
   • Adjust compositor effects: ${BOLD}picom-conf${NC}
-  • Install tmux plugins (in a tmux session): ${BOLD}prefix + I${NC}
+  • If Tmux was selected, install plugins (in a tmux session): ${BOLD}prefix + I${NC}
   • Check Julia: ${BOLD}juliaup status${NC}
   • If Emacs was selected: ${BOLD}systemctl --user status emacs${NC}
 
@@ -228,8 +229,6 @@ CORE_PACKAGES=(
 
 TERMINAL_TOOLS=(
     alacritty
-    tmux
-    tmux-plugin-manager
     mc
     btop
     eza
@@ -276,7 +275,7 @@ DEV_TOOLS=(
     markdown
 )
 
-# Editor-specific dependencies (installed only when the editor is selected)
+# Editor/tool-specific dependencies (installed only when selected)
 NEOVIM_DEPS=(
     cmake
     luarocks
@@ -289,7 +288,14 @@ EMACS_DEPS=(
     libtool-bin
 )
 
+TMUX_DEPS=(
+    tmux
+    tmux-plugin-manager
+)
+
 HARDWARE=(
+    mpv              # media player / camera viewfinder
+    v4l-utils        # Video4Linux camera utilities
     xinput
     xserver-xorg-input-libinput
     sysfsutils
@@ -313,8 +319,10 @@ ALL_PACKAGES=(
 # Virtual packages (prefixed with @) are not installed via apt:
 #   @neovim  — installed from GitHub release
 #   @emacs   — apt deps handled separately via EMACS_DEPS
+#   @tmux    — apt deps handled separately via TMUX_DEPS
 
 OPTIONAL_PACKAGES=(
+    "Tmux + plugins|@tmux|"
     "Neovim (GitHub release)|@neovim|"
     "Emacs + Doom|@emacs|"
     "Brave Browser|brave-browser|_setup_brave_repo"
@@ -503,8 +511,13 @@ install_optional_packages() {
             continue
         fi
 
-        # Handle virtual packages (editors)
+        # Handle virtual packages (editors and tools)
         case "$pkg" in
+            @tmux)
+                OPT_WITH_TMUX=true
+                ok "Tmux selected — will install with plugin manager."
+                continue
+                ;;
             @neovim)
                 OPT_WITH_NEOVIM=true
                 ok "Neovim selected — will install from GitHub."
@@ -526,7 +539,7 @@ install_optional_packages() {
         pkgs_to_install+=("$pkg")
     done
 
-    if [[ ${#pkgs_to_install[@]} -eq 0 && "$OPT_WITH_NEOVIM" != true && "$OPT_WITH_EMACS" != true ]]; then
+    if [[ ${#pkgs_to_install[@]} -eq 0 && "$OPT_WITH_NEOVIM" != true && "$OPT_WITH_EMACS" != true && "$OPT_WITH_TMUX" != true ]]; then
         ok "Nothing to install."
         return
     fi
@@ -545,6 +558,7 @@ install_optional_packages() {
 _is_pkg_installed() {
     local pkg="$1"
     case "$pkg" in
+        @tmux)   command -v tmux &>/dev/null ;;
         @neovim) command -v nvim &>/dev/null ;;
         @emacs)  command -v emacs &>/dev/null ;;
         *)       dpkg -s "$pkg" &>/dev/null ;;
@@ -1396,17 +1410,23 @@ main() {
     install_missing_packages "${ALL_PACKAGES[@]}"
     echo ""
 
-    # 2. Optional packages (interactive — includes editor selection)
+    # 2. Optional packages (interactive — includes editor/tool selection)
     info "--- Optional Packages ---"
     install_optional_packages
     echo ""
 
-    # Auto-detect already-installed editors so re-runs still maintain them
-    # even if the user skips the optional selection prompt.
+    # Auto-detect already-installed editors/tools so re-runs still maintain
+    # them even if the user skips the optional selection prompt.
     command -v nvim  &>/dev/null && OPT_WITH_NEOVIM=true
     command -v emacs &>/dev/null && OPT_WITH_EMACS=true
+    command -v tmux  &>/dev/null && OPT_WITH_TMUX=true
 
-    # 3. Editor dependencies (apt packages for selected editors)
+    # 3. Optional tool dependencies (apt packages for selected tools)
+    if [[ "$OPT_WITH_TMUX" == true ]]; then
+        info "--- Tmux Dependencies ---"
+        install_missing_packages "${TMUX_DEPS[@]}"
+        echo ""
+    fi
     if [[ "$OPT_WITH_NEOVIM" == true ]]; then
         info "--- Neovim Dependencies ---"
         install_missing_packages "${NEOVIM_DEPS[@]}"
@@ -1433,7 +1453,7 @@ main() {
         fi
         echo ""
 
-        # 6. tree-sitter CLI (used by Neovim tree-sitter)
+        # tree-sitter CLI (used by Neovim tree-sitter)
         info "--- tree-sitter CLI ---"
         install_treesitter_cli
         echo ""
@@ -1445,9 +1465,11 @@ main() {
     echo ""
 
     # 7. Tmux plugin manager
-    info "--- Tmux Plugin Manager ---"
-    migrate_tpm
-    echo ""
+    if [[ "$OPT_WITH_TMUX" == true ]]; then
+        info "--- Tmux Plugin Manager ---"
+        migrate_tpm
+        echo ""
+    fi
 
     # 8. HiDPI setup
     info "--- HiDPI ---"
@@ -1519,7 +1541,9 @@ main() {
     echo "  • Verify i3 is the default: ${BOLD}sudo update-alternatives --config x-session-manager${NC}"
     echo "  • Set GTK theme/icons/fonts: ${BOLD}lxappearance${NC}"
     echo "  • Adjust compositor effects: ${BOLD}picom-conf${NC}"
-    echo "  • Install tmux plugins (in a tmux session): ${BOLD}prefix + I${NC}"
+    if [[ "$OPT_WITH_TMUX" == true ]]; then
+        echo "  • Install tmux plugins (in a tmux session): ${BOLD}prefix + I${NC}"
+    fi
     echo "  • Check Julia: ${BOLD}juliaup status${NC}"
     if [[ "$OPT_WITH_EMACS" == true ]]; then
         echo "  • Emacs daemon: ${BOLD}systemctl --user status emacs${NC}"
