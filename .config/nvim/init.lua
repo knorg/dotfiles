@@ -287,7 +287,7 @@ require('lazy').setup({
           scratch_repl = true,
           repl_definition = {
             julia = {
-              command = { 'julia', '--project=@.', '-e', 'using Revise; println("Revise loaded"); using OhMyREPL' },
+              command = { 'julia', '-i', '-e', 'try using Revise catch e @warn "Revise not loaded" end' },
             },
           },
           repl_open_cmd = require('iron.view').split.vertical.botright(80),
@@ -685,7 +685,6 @@ require('lazy').setup({
       vim.list_extend(ensure_installed, {
         'lua-language-server', -- Lua Language server
         'stylua', -- Used to format Lua code
-        'julia-lsp',
         -- You can add other tools here that you want Mason to install
       })
 
@@ -723,6 +722,16 @@ require('lazy').setup({
         },
       })
       vim.lsp.config('julials', {
+        cmd = {
+          'julia',
+          '--startup-file=no',
+          '--history-file=no',
+          '-e',
+          [[
+      using LanguageServer
+      runserver()
+    ]],
+        },
         settings = {
           julia = {
             symbolCacheDownload = true,
