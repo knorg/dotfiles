@@ -235,6 +235,7 @@ TERMINAL_TOOLS=(
     ripgrep
     fd-find
     xclip
+    maim
 )
 
 I3_DESKTOP=(
@@ -569,10 +570,17 @@ _is_pkg_installed() {
 
 remove_lightdm() {
     if dpkg -s lightdm &>/dev/null; then
-        info "Removing lightdm display manager..."
-        sudo apt remove --purge -y lightdm lightdm-gtk-greeter 2>/dev/null || true
-        sudo apt autoremove --purge -y
-        ok "lightdm removed."
+        info "lightdm display manager is installed."
+        info "This setup uses console login → startx → i3 (no display manager)."
+        if ask_yes_no "Remove lightdm and lightdm-gtk-greeter?"; then
+            info "Removing lightdm display manager..."
+            sudo apt remove --purge -y lightdm lightdm-gtk-greeter 2>/dev/null || true
+            sudo apt autoremove --purge -y
+            ok "lightdm removed."
+        else
+            warn "Keeping lightdm. Console login via startx will still be configured,"
+            warn "but lightdm may start instead on boot."
+        fi
     else
         ok "lightdm not installed."
     fi
@@ -704,6 +712,15 @@ NERD_FONTS=(
 )
 NERD_FONT_DIR="${HOME}/.local/share/fonts/NerdFonts"
 
+MONASPACE_FONT_DIR="${HOME}/.local/share/fonts/Monaspace"
+MONASPACE_FAMILIES=(
+    "Argon"
+    "Krypton"
+    "Neon"
+    "Radon"
+    "Xenon"
+)
+
 install_nerd_fonts() {
     info "Checking Nerd Fonts..."
 
@@ -744,6 +761,86 @@ install_nerd_fonts() {
     # Rebuild font cache
     info "Rebuilding font cache..."
     fc-cache -f "$NERD_FONT_DIR"
+    ok "Font cache updated."
+}
+
+# -- Monaspace fonts from GitHub releases -------------------------------------
+# Five-variant monospaced superfamily for code (OFL-licensed)
+# Families: Argon, Krypton, Neon, Radon, Xenon
+# https://monaspace.githubnext.com/
+
+install_monaspace_fonts() {
+    info "Checking Monaspace fonts..."
+
+    # Quick check: if all 5 families have OTF files, skip
+    local -a missing=()
+    for family in "${MONASPACE_FAMILIES[@]}"; do
+        if ! ls "${MONASPACE_FONT_DIR}"/Monaspace${family}*.otf &>/dev/null 2>&1; then
+            missing+=("$family")
+        fi
+    done
+
+    if [[ ${#missing[@]} -eq 0 ]]; then
+        ok "All Monaspace fonts already installed (Argon, Krypton, Neon, Radon, Xenon)."
+        return
+    fi
+
+    # Get latest release tag via GitHub redirect
+    local tag
+    tag=$(curl -sI https://github.com/githubnext/monaspace/releases/latest \
+        | grep -i '^location:' | grep -oP 'v[\d.]+' | head -1) || true
+
+    if [[ -z "$tag" ]]; then
+        err "Could not determine latest Monaspace version."
+        return 1
+    fi
+
+    info "Downloading Monaspace ${tag} (OTF static fonts)..."
+
+    local tmp_zip
+    tmp_zip=$(mktemp /tmp/monaspace-XXXXXX.zip)
+
+    # v1.300+ uses split packages; fall back to single zip for older releases
+    local url="https://github.com/githubnext/monaspace/releases/download/${tag}/monaspace-static-${tag}.zip"
+
+    if ! curl -fLo "$tmp_zip" "$url"; then
+        info "Split package not found, trying single-archive format..."
+        url="https://github.com/githubnext/monaspace/releases/download/${tag}/monaspace-${tag}.zip"
+        if ! curl -fLo "$tmp_zip" "$url"; then
+            err "Failed to download Monaspace. Check the release and your connection."
+            rm -f "$tmp_zip"
+            return 1
+        fi
+    fi
+
+    # Extract OTF files into font directory
+    local tmp_extract
+    tmp_extract=$(mktemp -d /tmp/monaspace-extract-XXXXXX)
+
+    unzip -qo "$tmp_zip" -d "$tmp_extract"
+    rm -f "$tmp_zip"
+
+    mkdir -p "$MONASPACE_FONT_DIR"
+
+    # Find and copy all OTF files (static desktop fonts — all families × weights)
+    local otf_count=0
+    while IFS= read -r -d '' otf; do
+        cp "$otf" "$MONASPACE_FONT_DIR/"
+        ((otf_count++))
+    done < <(find "$tmp_extract" -name '*.otf' -print0)
+
+    rm -rf "$tmp_extract"
+
+    if [[ "$otf_count" -eq 0 ]]; then
+        err "No OTF files found in the Monaspace archive."
+        return 1
+    fi
+
+    ok "Installed ${otf_count} Monaspace font files to ${MONASPACE_FONT_DIR}."
+
+    # Rebuild font cache
+    info "Rebuilding font cache..."
+    fc-cache -f "$MONASPACE_FONT_DIR"
     ok "Font cache updated."
 }
 
@@ -1464,14 +1561,19 @@ main() {
     install_nerd_fonts
     echo ""
 
-    # 7. Tmux plugin manager
+    # 7. Monaspace fonts
+    info "--- Monaspace Fonts ---"
+    install_monaspace_fonts
+    echo ""
+
+    # 8. Tmux plugin manager
     if [[ "$OPT_WITH_TMUX" == true ]]; then
         info "--- Tmux Plugin Manager ---"
         migrate_tpm
         echo ""
     fi
 
-    # 8. HiDPI setup
+    # 9. HiDPI setup
     info "--- HiDPI ---"
     if [[ "$OPT_HIDPI" == true ]]; then
         local do_hidpi=false
@@ -1499,34 +1601,34 @@ main() {
     fi
     echo ""
 
-    # 9. Stow pre-cleanup
+    # 10. Stow pre-cleanup
     info "--- Stow Pre-Cleanup ---"
     cleanup_for_stow
     echo ""
 
-    # 10. Deploy dotfiles (stow from this repo)
+    # 11. Deploy dotfiles (stow from this repo)
     info "--- Dotfiles ---"
     deploy_dotfiles
     echo ""
 
-    # 11. Doom Emacs (needs dotfiles for ~/.config/doom/, restarts daemon)
+    # 12. Doom Emacs (needs dotfiles for ~/.config/doom/, restarts daemon)
     if [[ "$OPT_WITH_EMACS" == true ]]; then
         info "--- Doom Emacs ---"
         install_doom_emacs
         echo ""
 
-        # 12. Emacs daemon (enable for next boot — not started now)
+        # 13. Emacs daemon (enable for next boot — not started now)
         info "--- Emacs Daemon ---"
         setup_emacs_daemon
         echo ""
     fi
 
-    # 13. Julia
+    # 14. Julia
     info "--- Julia ---"
     install_julia
     echo ""
 
-    # 14. startx + i3 login
+    # 15. startx + i3 login
     info "--- Console Login → i3 ---"
     setup_startx_login
     echo ""
