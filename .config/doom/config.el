@@ -227,3 +227,18 @@ Does nothing if no counterpart exists."
            ((agenda "" ((org-agenda-span 7)))
             (todo "TODO" ((org-agenda-overriding-header "All TODOs")))
             (todo "WAITING" ((org-agenda-overriding-header "Waiting On"))))))))
+
+
+(after! vterm
+  (set-popup-rule! "^\\*vterm"
+    :side 'right
+    :size 0.4
+    :select t
+    :quit nil
+    :ttl 0))
+  (set-popup-rule! "^\\*doom:vterm-popup"
+    :side 'right
+    :size 0.4
+    :select t
+    :quit nil
+    :ttl 0))
