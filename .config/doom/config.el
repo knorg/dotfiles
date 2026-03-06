@@ -242,3 +242,7 @@ Does nothing if no counterpart exists."
     :select t
     :quit nil
     :ttl 0))
+
+(when (display-graphic-p)
+  (unless (member "Symbols Nerd Font Mono" (font-family-list))
+    (nerd-icons-install-fonts t)))
