@@ -149,6 +149,7 @@ ${BOLD}Options:${NC}
     --nvim-rollback     Rollback Neovim to previous version (standalone, exits)
 
   ${BOLD}HiDPI${NC}
+    --hidpi             Apply HiDPI fixes (GRUB font + xrandr scaling)
     --hidpi-revert      Revert HiDPI settings (standalone, exits)
     --hidpi-help        Show how to change display resolution (standalone, exits)
 
@@ -826,7 +827,7 @@ install_monaspace_fonts() {
     local otf_count=0
     while IFS= read -r -d '' otf; do
         cp "$otf" "$MONASPACE_FONT_DIR/"
-        ((otf_count++))
+        ((++otf_count))
     done < <(find "$tmp_extract" -name '*.otf' -print0)
 
     rm -rf "$tmp_extract"
@@ -905,7 +906,10 @@ migrate_tpm() {
 
     # If tmux.conf was previously patched to use the Debian path directly,
     # revert it to the standard path.
-    if [[ -f "$TMUX_CONF" ]]; then
+    # IMPORTANT: skip if tmux.conf is a symlink (stow-managed) — sed -i
+    # replaces symlinks with regular files, which breaks stow on re-runs.
+    # If the content needs fixing, edit the source file in the dotfiles repo.
+    if [[ -f "$TMUX_CONF" && ! -L "$TMUX_CONF" ]]; then
         if grep -q "run '${tpm_pkg_dir}/tpm'" "$TMUX_CONF"; then
             info "Reverting tmux.conf run line to standard tpm path..."
             sed -i "s|^run '${tpm_pkg_dir}/tpm'|run '~/.tmux/plugins/tpm/tpm'|" "$TMUX_CONF"
@@ -918,6 +922,8 @@ migrate_tpm() {
             sed -i '/TMUX_PLUGIN_MANAGER_PATH/d' "$TMUX_CONF"
             ok "Removed TMUX_PLUGIN_MANAGER_PATH line."
         fi
+    elif [[ -L "$TMUX_CONF" ]]; then
+        ok "tmux.conf is managed by stow — skipping content patches."
     fi
 
     warn "After setup, reload tmux config:  tmux source ~/.tmux.conf"
@@ -1024,24 +1030,60 @@ setup_hidpi_grub() {
 setup_hidpi_desktop() {
     info "Setting up HiDPI desktop scaling via xrandr..."
 
+    local expected_mode="2048x1152"
+    local created_file=false
+
     if [[ -f "$XRANDR_FILE" ]]; then
-        ok "${XRANDR_FILE} already exists, skipping."
-        return
+        # Verify the file contains the expected resolution
+        if grep -q -- "--mode ${expected_mode}" "$XRANDR_FILE"; then
+            ok "${XRANDR_FILE} already configured (mode: ${expected_mode})."
+        else
+            local current_mode
+            current_mode=$(grep -oP -- '--mode\s+\S+' "$XRANDR_FILE" | head -1) || true
+            warn "${XRANDR_FILE} exists but uses ${current_mode:-an unknown mode}."
+            info "Edit it manually or run --hidpi-revert then --hidpi to reset."
+            return
+        fi
+    else
+        sudo mkdir -p "$(dirname "$XRANDR_FILE")"
+
+        info "Creating ${XRANDR_FILE}..."
+        sudo tee "$XRANDR_FILE" >/dev/null <<'EOF'
+# Reduced resolution for 4K Display
+xrandr --newmode "2304x1296"  251.25  2304 2464 2712 3120  1296 1299 1304 1344 -hsync +vsync
+xrandr --addmode eDP-1 2304x1296
+xrandr --output eDP-1 --mode 2048x1152
+EOF
+        sudo chmod 644 "$XRANDR_FILE"
+        created_file=true
+        ok "Created ${XRANDR_FILE}."
     fi
 
-    sudo mkdir -p "$(dirname "$XRANDR_FILE")"
+    # Apply xrandr settings to the current X session so the user sees
+    # the effect immediately — not only after reboot/relogin.
+    if [[ -n "${DISPLAY:-}" ]]; then
+        local current_res
+        current_res=$(xrandr --current 2>/dev/null \
+            | grep '\*' | head -1 | grep -oP '\d+x\d+') || true
 
-    info "Creating ${XRANDR_FILE}..."
-    sudo tee "$XRANDR_FILE" >/dev/null <<'EOF'
-# Reduced resolution for 4K Display
- xrandr --newmode "2304x1296"  251.25  2304 2464 2712 3120  1296 1299 1304 1344 -hsync +vsync
- xrandr --addmode eDP-1 2304x1296
- xrandr --output eDP-1 --mode 2048x1152
-EOF
-    sudo chmod 644 "$XRANDR_FILE"
+        if [[ "$current_res" == "$expected_mode" ]]; then
+            ok "Current resolution is already ${expected_mode}."
+        else
+            info "Applying xrandr settings to current session..."
+            # newmode/addmode may fail if already defined — that's fine
+            xrandr --newmode "2304x1296" 251.25 2304 2464 2712 3120 1296 1299 1304 1344 -hsync +vsync 2>/dev/null || true
+            xrandr --addmode eDP-1 2304x1296 2>/dev/null || true
 
-    ok "Created ${XRANDR_FILE}."
-    warn "Log out and back in (or reboot) for the resolution change to take effect."
+            if xrandr --output eDP-1 --mode "$expected_mode" 2>/dev/null; then
+                ok "Resolution changed to ${expected_mode}."
+            else
+                warn "Could not apply resolution — your output may not be eDP-1."
+                info "Run 'xrandr' to list outputs and edit ${XRANDR_FILE} accordingly."
+            fi
+        fi
+    elif [[ "$created_file" == true ]]; then
+        warn "No X session detected. Resolution will change on next login."
+    fi
 }
 
 revert_hidpi() {
@@ -1087,39 +1129,28 @@ revert_hidpi() {
 }
 
 # -- Stow pre-cleanup ---------------------------------------------------------
-# Remove existing files/dirs at stow targets so symlinks can be created.
-# Scans the actual dotfiles repo to determine which paths would conflict.
+# Remove existing real files at stow targets so symlinks can be created.
+# With --no-folding, stow creates individual file symlinks.  We check each
+# file that stow would deploy and back up any real (non-symlink) target.
 
-# Build the conflict list dynamically from what's actually in the repo.
-# Stow with --no-folding deploys individual file symlinks, so we check
-# each file's target path under $HOME for real (non-symlink) conflicts.
-_build_stow_conflict_paths() {
-    local -a paths=()
+cleanup_for_stow() {
+    info "Checking for files that would conflict with stow..."
 
-    # Find all files in the dotfiles dir that stow would deploy.
-    # Exclude repo-level files that aren't stow targets.
+    local -a conflicts=()
+
+    # For every file in the repo that stow would deploy, check whether the
+    # corresponding path under $HOME is a real file (not a symlink).
     while IFS= read -r -d '' rel_path; do
         local target="${HOME}/${rel_path}"
 
-        # For files inside directories (e.g. .config/i3/config),
-        # check the top-level directory — if the whole dir is a real
-        # dir with non-symlink content, it's a conflict.
-        # Also check the file itself for top-level dotfiles (.bashrc, etc.).
-        local top_dir
-        top_dir=$(echo "$rel_path" | cut -d'/' -f1-2)
-        # For .config/X paths, the meaningful unit is .config/X
-        if [[ "$rel_path" == .config/* ]]; then
-            top_dir=$(echo "$rel_path" | cut -d'/' -f1-3)
-        fi
+        # No file at target → no conflict
+        [[ -e "$target" || -L "$target" ]] || continue
 
-        local target_dir="${HOME}/${top_dir}"
+        # Already a symlink (from a previous stow run) → no conflict
+        [[ -L "$target" ]] && continue
 
-        # Add the directory (deduplicated later) or the file itself
-        if [[ "$rel_path" == */* ]]; then
-            paths+=("$target_dir")
-        else
-            paths+=("$target")
-        fi
+        # Real file exists where stow needs to create a symlink → conflict
+        conflicts+=("$target")
     done < <(
         cd "$DOTFILES_DIR" && \
         find . -mindepth 1 \
@@ -1132,53 +1163,12 @@ _build_stow_conflict_paths() {
             -type f -printf '%P\0'
     )
 
-    # Deduplicate
-    local -A seen=()
-    STOW_CONFLICT_PATHS=()
-    for p in "${paths[@]}"; do
-        if [[ -z "${seen[$p]+x}" ]]; then
-            seen[$p]=1
-            STOW_CONFLICT_PATHS+=("$p")
-        fi
-    done
-}
-
-# Check if a directory is already managed by stow (contains symlinks)
-# On a fresh install, default config dirs only contain real files.
-# After stow --no-folding, they contain symlinks to dotfiles.
-_is_stow_managed_dir() {
-    local dir="$1"
-    [[ -d "$dir" ]] || return 1
-    [[ -n "$(find "$dir" -mindepth 1 -maxdepth 1 -type l -print -quit 2>/dev/null)" ]]
-}
-
-cleanup_for_stow() {
-    info "Checking for files that would conflict with stow..."
-
-    _build_stow_conflict_paths
-
-    local -a conflicts=()
-
-    for path in "${STOW_CONFLICT_PATHS[@]}"; do
-        # Skip if path doesn't exist or is already a symlink
-        [[ -e "$path" ]] || continue
-        [[ -L "$path" ]] && continue
-
-        # With --no-folding, stow creates real dirs with symlinked files inside.
-        # If the dir is already stow-managed, it's not a conflict.
-        if [[ -d "$path" ]] && _is_stow_managed_dir "$path"; then
-            continue
-        fi
-
-        conflicts+=("$path")
-    done
-
     if [[ ${#conflicts[@]} -eq 0 ]]; then
         ok "No conflicting files found. Ready for stow."
         return
     fi
 
-    info "Found ${#conflicts[@]} path(s) that would block stow:"
+    info "Found ${#conflicts[@]} file(s) that would block stow:"
     for c in "${conflicts[@]}"; do
         echo "         $c"
     done
@@ -1217,11 +1207,28 @@ deploy_dotfiles() {
     fi
 
     info "Running stow..."
-    cd "$DOTFILES_DIR"
+
+    # Use -d (stow directory = parent) and package name (basename) rather
+    # than `cd dir && stow .` — the "." package means stow dir and package
+    # are the same thing, which breaks relative symlink path computation.
+    local stow_parent stow_pkg
+    stow_parent="$(dirname "$DOTFILES_DIR")"
+    stow_pkg="$(basename "$DOTFILES_DIR")"
+
     # --no-folding: never replace a real directory with a symlink.
     # Without this, stow may "fold" ~/.config into a single symlink
     # to .dotfiles/.config, destroying configs for Firefox, Thunar, etc.
-    stow --no-folding -v -t "$HOME" .
+    # --restow: first unstow then restow — cleans up stale symlinks from
+    # renamed/deleted files and ensures a consistent state on re-runs.
+    # --ignore: stow's default ignore list covers .git, .gitignore, and
+    # README.* — but NOT .gitmodules or setup-debian13.sh.  Exclude both.
+    stow -d "$stow_parent" \
+        --no-folding --restow \
+        --ignore='setup-debian13\.sh' \
+        --ignore='\.gitmodules' \
+        -v -t "$HOME" \
+        "$stow_pkg"
+
     ok "Dotfiles deployed via stow."
 }
 
@@ -1428,7 +1435,8 @@ EOF
     fi
 
     # Patch existing xinitrc if it's missing the systemd import
-    if [[ -f "$xinitrc" ]] && ! grep -q 'import-environment DISPLAY' "$xinitrc"; then
+    # Skip if xinitrc is a stow symlink — sed -i destroys symlinks.
+    if [[ -f "$xinitrc" && ! -L "$xinitrc" ]] && ! grep -q 'import-environment DISPLAY' "$xinitrc"; then
         info "Adding systemd DISPLAY import to ${xinitrc}..."
         sed -i '/^exec i3/i \
 # Export DISPLAY to systemd user session so user services\
@@ -1445,6 +1453,13 @@ systemctl --user start default.target\
 
     if [[ -f "$profile" ]] && grep -qF "$startx_marker" "$profile"; then
         ok ".profile already has startx block."
+    elif [[ -L "$profile" ]]; then
+        # .profile is a stow symlink — cat >> would modify the repo source.
+        # The startx block should be added to the dotfiles repo instead.
+        if ! grep -qF "$startx_marker" "$profile"; then
+            warn ".profile is managed by stow but missing the startx block."
+            warn "Add the startx block to .profile in your dotfiles repo."
+        fi
     elif [[ -f "$profile" ]]; then
         info "Appending startx block to .profile..."
         cat >> "$profile" <<'EOF'
@@ -1483,6 +1498,33 @@ main() {
     if [[ "$OPT_NVIM_ROLLBACK" == true ]]; then
         need_root
         rollback_neovim
+        exit 0
+    fi
+
+    # --hidpi without --install → standalone HiDPI setup
+    if [[ "$OPT_HIDPI" == true && "$OPT_INSTALL" != true ]]; then
+        need_root
+        info "--- HiDPI (standalone) ---"
+        local do_hidpi=false
+
+        if detect_hidpi; then
+            info "HiDPI display detected."
+            if ask_yes_no "Apply HiDPI fixes (GRUB font + xrandr scaling)?"; then
+                do_hidpi=true
+            fi
+        else
+            info "No HiDPI display detected."
+            if ask_yes_no "Apply HiDPI fixes anyway?"; then
+                do_hidpi=true
+            fi
+        fi
+
+        if [[ "$do_hidpi" == true ]]; then
+            setup_hidpi_grub
+            setup_hidpi_desktop
+        else
+            ok "No changes made."
+        fi
         exit 0
     fi
 
@@ -1597,7 +1639,7 @@ main() {
             ok "Skipping HiDPI setup."
         fi
     else
-        ok "Skipping HiDPI setup (use --install --hidpi to configure)."
+        ok "Skipping HiDPI setup (use --hidpi or --install --hidpi to configure)."
     fi
     echo ""
 
