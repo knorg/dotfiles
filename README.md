@@ -1,8 +1,8 @@
 # Debian 13 (Trixie) — i3wm Development Environment
 
 Automated setup for a keyboard-driven Linux desktop: console login → `startx` → i3
-window manager, with Julia and a curated set of terminal tools. Neovim and
-Emacs (Doom) are available as optional selections during install.
+window manager, with Julia and a curated set of terminal tools. Neovim, Emacs (Doom),
+and Tmux are available as optional selections during install.
 
 Everything is managed through GNU Stow so dotfiles stay in one repo and deploy as
 symlinks.
@@ -20,20 +20,23 @@ configs, and backs up any files that would conflict with Stow before deploying.
 
 ## What the Script Does
 
-1. Installs core Debian packages (i3, Alacritty, tmux, picom, rofi, dev tools, fonts, …)
-2. Offers optional packages interactively — including **Neovim** and **Emacs (Doom)**, plus Brave, VS Code, Citrix Workspace, Dolphin, Konsole
-3. Installs editor-specific dependencies for any selected editors
+1. Installs core Debian packages (i3, Alacritty, picom, rofi, dev tools, fonts, …)
+2. Offers optional packages interactively — **Tmux + plugins**, **Neovim**,
+   **Emacs (Doom)**, Brave, VS Code, Citrix Workspace, Dolphin, Konsole
+3. Installs editor/tool-specific dependencies for any selected options
 4. Removes `lightdm` (no display manager — console login + `startx`)
 5. If Neovim was selected: installs from the latest GitHub release + tree-sitter CLI
-6. Installs Nerd Fonts (CascadiaMono)
-7. Configures tmux plugin manager (Debian package + user symlink)
-8. Backs up conflicting files and deploys dotfiles via `stow --no-folding`
-9. If Emacs was selected: installs Doom Emacs, runs `doom sync`, enables the systemd user daemon
-10. Installs Julia via juliaup (user-level)
-11. Sets up `~/.xinitrc` and `.profile` for console login → `startx` → i3
+6. Installs Nerd Fonts (CascadiaMono) and Monaspace fonts (Argon, Krypton, Neon, Radon, Xenon)
+7. If Tmux was selected: configures tmux plugin manager (Debian package + user symlink)
+8. Optionally applies HiDPI fixes (GRUB font + xrandr scaling) when `--hidpi` is passed
+9. Backs up conflicting files and deploys dotfiles via `stow --no-folding`
+10. If Emacs was selected: installs Doom Emacs, runs `doom sync`, enables the systemd user daemon
+11. Installs Julia via juliaup (user-level)
+12. Sets up `~/.xinitrc` and `.profile` for console login → `startx` → i3
 
-On re-runs, already-installed editors are auto-detected and their maintenance
-steps (Neovim version check, `doom sync`, etc.) run without re-selecting them.
+On re-runs, already-installed editors and tools are auto-detected so their
+maintenance steps (Neovim version check, `doom sync`, tmux plugin manager, etc.)
+run without re-selecting them at the interactive prompt.
 
 ## Usage
 
@@ -44,11 +47,29 @@ steps (Neovim version check, `doom sync`, etc.) run without re-selecting them.
 ./setup-debian13.sh --nvim-update         # full setup + update Neovim to latest
 ./setup-debian13.sh --nvim-rollback       # restore previous Neovim version
 
+./setup-debian13.sh --hidpi               # apply HiDPI fixes (standalone)
 ./setup-debian13.sh --hidpi-revert        # undo HiDPI changes
 ./setup-debian13.sh --hidpi-help          # display resolution tips
 
 ./setup-debian13.sh                       # show help
 ```
+
+## Included Tools
+
+The base install (before optional selections) includes:
+
+| Category | Packages |
+|---|---|
+| **Terminal** | Alacritty, mc, btop, eza, ripgrep, fd-find |
+| **i3 Desktop** | i3, i3blocks, picom, picom-conf, rofi, feh |
+| **Screenshots** | maim + xclip (keyboard-driven capture to clipboard) |
+| **Camera** | mpv + v4l-utils (UVC webcam preview and control) |
+| **Appearance** | lxappearance, Arc/Greybird/Numix/Orchis themes, Papirus/Faenza/Moka icons, color-picker |
+| **Dev** | npm, shellcheck, markdown |
+| **Network** | gvfs-backends, smbclient |
+| **Fonts** | CascadiaMono Nerd Font, Monaspace (5-family superfamily), DejaVu, Font Awesome, Symbola |
+
+The `.bashrc` aliases `ls` to `eza` with icons, git status, and directory-first sorting.
 
 ## Neovim
 
@@ -120,11 +141,26 @@ so it picks up the changes:
 doom sync && systemctl --user restart emacs
 ```
 
+## Tmux
+
+Tmux is offered as an optional selection during install. When selected, the script
+installs tmux and the Debian-packaged `tmux-plugin-manager`, then creates a user-level
+symlink (`~/.tmux/plugins/tpm`) pointing to the system package so that plugin
+installation via `prefix + I` works without root.
+
+After setup, reload the config and install plugins:
+
+```bash
+tmux source ~/.tmux.conf     # reload config
+# then press: prefix + I     # install plugins
+```
+
 ## HiDPI
 
 HiDPI configuration is **not applied by default**. Use `--install --hidpi` to
-enable it during setup. This is useful for 4K laptop panels where native
-resolution makes everything too small for an i3/X11 desktop without scaling.
+enable it during setup, or `--hidpi` to apply it standalone. This is useful for
+4K laptop panels where native resolution makes everything too small for an
+i3/X11 desktop without scaling.
 
 When enabled, the script:
 
@@ -148,13 +184,13 @@ After a fresh install (or a re-run), verify these items:
 - [ ] Choose i3 as the default session: `sudo update-alternatives --config x-session-manager`
 - [ ] Set GTK theme, icons, and fonts: `lxappearance`
 - [ ] Adjust compositor effects: `picom-conf`
-- [ ] Install tmux plugins (inside a tmux session): `prefix + I`
+- [ ] If Tmux was selected: install plugins (inside a tmux session): `prefix + I`
 - [ ] Check Julia: `juliaup status`
 - [ ] If Emacs was selected: verify daemon — `systemctl --user status emacs`
 
 On re-runs, the script skips what is already in place and auto-detects installed
-editors. The checklist items above are one-time actions — once configured, they
-persist across re-runs.
+editors and tools. The checklist items above are one-time actions — once configured,
+they persist across re-runs.
 
 ## Repository Layout
 
@@ -163,16 +199,18 @@ persist across re-runs.
 ├── .bashrc
 ├── .profile
 ├── .tmux.conf
+├── .stow-local-ignore      # excludes setup script, README, .git from stow
 ├── .config/
 │   ├── alacritty/
-│   ├── doom/           # Doom Emacs config (init.el, config.el, packages.el)
-│   ├── i3/             # i3wm config
+│   ├── doom/               # Doom Emacs config (init.el, config.el, packages.el)
+│   ├── i3/                 # i3wm config
 │   ├── i3status/
 │   ├── i3blocks/
 │   ├── mc/
-│   ├── nvim/           # Neovim config (init.lua)
+│   ├── nvim/               # Neovim config (init.lua)
 │   └── picom/
-└── setup-debian13.sh   # this script
+├── setup-debian13.sh        # this script
+└── README.md
 ```
 
 Files are deployed to `$HOME` via `stow --no-folding .` which creates per-file
@@ -180,4 +218,5 @@ symlinks inside real directories, keeping configs for other applications
 (Firefox, Thunar, …) intact. Before deploying, the script scans the repo to
 find which target paths already exist as real files and offers to back them up —
 no hardcoded list, so adding or removing directories from the repo is all that's
-needed.
+needed. The `.stow-local-ignore` file prevents the setup script, README, and
+`.git` directory from being deployed as dotfiles.
