@@ -246,6 +246,7 @@ I3_DESKTOP=(
     picom-conf
     rofi
     feh
+    xsettingsd
 )
 
 APPEARANCE=(

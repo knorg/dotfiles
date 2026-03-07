@@ -9,6 +9,8 @@
 #
 # Please see https://i3wm.org/docs/userguide.html for a complete reference!
 
+exec --no-startup-id xsettingsd &
+
 # print keymaps
 bindsym $mod+F1 exec --no-startup-id ~/.dotfiles/.config/i3/scripts/launch-keymaps.sh
 for_window [class="i3-keymaps"] floating enable, move position center

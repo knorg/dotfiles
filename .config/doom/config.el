@@ -37,11 +37,43 @@
 ;; (setq doom-theme 'ef-trio-dark)
 (setq doom-theme 'modus-vivendi-tinted)
 
+;;; GTK theme sync ---------------------------------------------------------
+(defvar my/gtk-dark-theme  "Orchis-Dark")
+(defvar my/gtk-light-theme "Orchis-Light")
+
+(defun my/emacs-theme-dark-p (theme-name)
+  "Return non-nil if THEME-NAME looks like a dark variant."
+  (let ((name (if (stringp theme-name) theme-name (symbol-name theme-name))))
+    (or (string-match-p "vivendi" name)
+        (string-suffix-p "-dark" name))))
+
+(defun my/set-gtk-theme (gtk-theme)
+  "Rewrite GTK2/3 config files and poke xsettingsd for live updates."
+  ;; 1) GTK3: ~/.config/gtk-3.0/settings.ini
+  (let ((gtk3-ini (expand-file-name "~/.config/gtk-3.0/settings.ini")))
+    (when (file-exists-p gtk3-ini)
+      (call-process-shell-command
+       (format "sed -i 's/^gtk-theme-name=.*/gtk-theme-name=%s/' %s"
+               gtk-theme gtk3-ini))))
+  ;; 2) GTK2: ~/.gtkrc-2.0
+  (let ((gtk2-rc (expand-file-name "~/.gtkrc-2.0")))
+    (when (file-exists-p gtk2-rc)
+      (call-process-shell-command
+       (format "sed -i 's/^gtk-theme-name=.*/gtk-theme-name=\"%s\"/' %s"
+               gtk-theme gtk2-rc))))
+  ;; 3) xsettingsd: rewrite Net/ThemeName, then SIGHUP to broadcast
+  (let ((xsd (expand-file-name "~/.xsettingsd")))
+    (when (file-exists-p xsd)
+      (call-process-shell-command
+       (format "sed -i 's/^Net\\/ThemeName .*/Net\\/ThemeName \"%s\"/' %s"
+               gtk-theme xsd))
+      (call-process-shell-command "killall -HUP xsettingsd"))))
+
 ;; Toggle between dark/light variant of current theme
 (defun my/toggle-dark-light-theme ()
   "Toggle between dark and light variants of the current theme.
 Supports doom-themes, ef-themes, and modus-themes.
-Does nothing if no counterpart exists."
+Also switches GTK theme via config files and xsettingsd."
   (interactive)
   (let* ((name (symbol-name doom-theme))
          (new (cond
@@ -62,6 +94,10 @@ Does nothing if no counterpart exists."
         (progn
           (setq doom-theme new)
           (load-theme new t)
+          (my/set-gtk-theme
+           (if (my/emacs-theme-dark-p new)
+               my/gtk-dark-theme
+             my/gtk-light-theme))
           (message "Switched to %s" new))
       (error
        (setq doom-theme (intern name))
@@ -246,3 +282,5 @@ Does nothing if no counterpart exists."
 (when (display-graphic-p)
   (unless (member "Symbols Nerd Font Mono" (font-family-list))
     (nerd-icons-install-fonts t)))
+
+
