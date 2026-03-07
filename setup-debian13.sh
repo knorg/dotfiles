@@ -774,14 +774,15 @@ install_monaspace_fonts() {
     info "Checking Monaspace fonts..."
 
     # Quick check: if all 5 families have OTF files, skip
-    local -a missing=()
+    local all_present=true
     for family in "${MONASPACE_FAMILIES[@]}"; do
         if ! ls "${MONASPACE_FONT_DIR}"/Monaspace${family}*.otf &>/dev/null 2>&1; then
-            missing+=("$family")
+            all_present=false
+            break
         fi
     done
 
-    if [[ ${#missing[@]} -eq 0 ]]; then
+    if [[ "$all_present" == true ]]; then
         ok "All Monaspace fonts already installed (Argon, Krypton, Neon, Radon, Xenon)."
         return
     fi
@@ -792,8 +793,8 @@ install_monaspace_fonts() {
         | grep -i '^location:' | grep -oP 'v[\d.]+' | head -1) || true
 
     if [[ -z "$tag" ]]; then
-        err "Could not determine latest Monaspace version."
-        return 1
+        warn "Could not determine latest Monaspace version. Skipping."
+        return
     fi
 
     info "Downloading Monaspace ${tag} (OTF static fonts)..."
@@ -803,22 +804,33 @@ install_monaspace_fonts() {
 
     # v1.300+ uses split packages; fall back to single zip for older releases
     local url="https://github.com/githubnext/monaspace/releases/download/${tag}/monaspace-static-${tag}.zip"
+    local downloaded=false
 
-    if ! curl -fLo "$tmp_zip" "$url"; then
-        info "Split package not found, trying single-archive format..."
+    if curl -fLo "$tmp_zip" "$url" 2>/dev/null; then
+        downloaded=true
+    else
         url="https://github.com/githubnext/monaspace/releases/download/${tag}/monaspace-${tag}.zip"
-        if ! curl -fLo "$tmp_zip" "$url"; then
-            err "Failed to download Monaspace. Check the release and your connection."
-            rm -f "$tmp_zip"
-            return 1
+        if curl -fLo "$tmp_zip" "$url" 2>/dev/null; then
+            downloaded=true
         fi
+    fi
+
+    if [[ "$downloaded" != true ]]; then
+        err "Failed to download Monaspace. Check your connection."
+        rm -f "$tmp_zip"
+        return
     fi
 
     # Extract OTF files into font directory
     local tmp_extract
     tmp_extract=$(mktemp -d /tmp/monaspace-extract-XXXXXX)
 
-    unzip -qo "$tmp_zip" -d "$tmp_extract"
+    if ! unzip -qo "$tmp_zip" -d "$tmp_extract"; then
+        err "Failed to extract Monaspace archive."
+        rm -f "$tmp_zip"
+        rm -rf "$tmp_extract"
+        return
+    fi
     rm -f "$tmp_zip"
 
     mkdir -p "$MONASPACE_FONT_DIR"
@@ -833,8 +845,8 @@ install_monaspace_fonts() {
     rm -rf "$tmp_extract"
 
     if [[ "$otf_count" -eq 0 ]]; then
-        err "No OTF files found in the Monaspace archive."
-        return 1
+        warn "No OTF files found in the Monaspace archive."
+        return
     fi
 
     ok "Installed ${otf_count} Monaspace font files to ${MONASPACE_FONT_DIR}."
@@ -906,9 +918,8 @@ migrate_tpm() {
 
     # If tmux.conf was previously patched to use the Debian path directly,
     # revert it to the standard path.
-    # IMPORTANT: skip if tmux.conf is a symlink (stow-managed) — sed -i
-    # replaces symlinks with regular files, which breaks stow on re-runs.
-    # If the content needs fixing, edit the source file in the dotfiles repo.
+    # Skip if tmux.conf is a symlink (stow-managed) — sed -i replaces
+    # symlinks with regular files, which would break stow.
     if [[ -f "$TMUX_CONF" && ! -L "$TMUX_CONF" ]]; then
         if grep -q "run '${tpm_pkg_dir}/tpm'" "$TMUX_CONF"; then
             info "Reverting tmux.conf run line to standard tpm path..."
@@ -922,8 +933,6 @@ migrate_tpm() {
             sed -i '/TMUX_PLUGIN_MANAGER_PATH/d' "$TMUX_CONF"
             ok "Removed TMUX_PLUGIN_MANAGER_PATH line."
         fi
-    elif [[ -L "$TMUX_CONF" ]]; then
-        ok "tmux.conf is managed by stow — skipping content patches."
     fi
 
     warn "After setup, reload tmux config:  tmux source ~/.tmux.conf"
@@ -969,11 +978,17 @@ setup_hidpi_grub() {
     fi
 
     # Generate larger GRUB font
-    sudo grub-mkfont \
+    sudo mkdir -p "$(dirname "$GRUB_FONT_PATH")"
+    if sudo grub-mkfont \
         --output="$GRUB_FONT_PATH" \
         --size="$GRUB_FONT_SIZE" \
-        "$GRUB_FONT_SRC"
-    ok "Generated GRUB font: ${GRUB_FONT_PATH}"
+        "$GRUB_FONT_SRC"; then
+        ok "Generated GRUB font: ${GRUB_FONT_PATH}"
+    else
+        warn "grub-mkfont failed. Is grub-common installed?"
+        warn "Skipping GRUB font/resolution configuration."
+        return
+    fi
 
     # Patch /etc/default/grub
     local grub_default="/etc/default/grub"
@@ -1030,58 +1045,43 @@ setup_hidpi_grub() {
 setup_hidpi_desktop() {
     info "Setting up HiDPI desktop scaling via xrandr..."
 
-    local expected_mode="2048x1152"
-    local created_file=false
-
-    if [[ -f "$XRANDR_FILE" ]]; then
-        # Verify the file contains the expected resolution
-        if grep -q -- "--mode ${expected_mode}" "$XRANDR_FILE"; then
-            ok "${XRANDR_FILE} already configured (mode: ${expected_mode})."
-        else
-            local current_mode
-            current_mode=$(grep -oP -- '--mode\s+\S+' "$XRANDR_FILE" | head -1) || true
-            warn "${XRANDR_FILE} exists but uses ${current_mode:-an unknown mode}."
-            info "Edit it manually or run --hidpi-revert then --hidpi to reset."
-            return
-        fi
-    else
+    if [[ ! -f "$XRANDR_FILE" ]]; then
         sudo mkdir -p "$(dirname "$XRANDR_FILE")"
 
         info "Creating ${XRANDR_FILE}..."
         sudo tee "$XRANDR_FILE" >/dev/null <<'EOF'
 # Reduced resolution for 4K Display
-xrandr --newmode "2304x1296"  251.25  2304 2464 2712 3120  1296 1299 1304 1344 -hsync +vsync
-xrandr --addmode eDP-1 2304x1296
-xrandr --output eDP-1 --mode 2048x1152
+ xrandr --newmode "2304x1296"  251.25  2304 2464 2712 3120  1296 1299 1304 1344 -hsync +vsync
+ xrandr --addmode eDP-1 2304x1296
+ xrandr --output eDP-1 --mode 2048x1152
 EOF
         sudo chmod 644 "$XRANDR_FILE"
-        created_file=true
         ok "Created ${XRANDR_FILE}."
+    else
+        ok "${XRANDR_FILE} already exists."
     fi
 
     # Apply xrandr settings to the current X session so the user sees
-    # the effect immediately — not only after reboot/relogin.
+    # the effect without needing to reboot/relogin.
     if [[ -n "${DISPLAY:-}" ]]; then
         local current_res
         current_res=$(xrandr --current 2>/dev/null \
             | grep '\*' | head -1 | grep -oP '\d+x\d+') || true
 
-        if [[ "$current_res" == "$expected_mode" ]]; then
-            ok "Current resolution is already ${expected_mode}."
+        if [[ "$current_res" == "2048x1152" ]]; then
+            ok "Current resolution is already 2048x1152."
         else
             info "Applying xrandr settings to current session..."
-            # newmode/addmode may fail if already defined — that's fine
             xrandr --newmode "2304x1296" 251.25 2304 2464 2712 3120 1296 1299 1304 1344 -hsync +vsync 2>/dev/null || true
             xrandr --addmode eDP-1 2304x1296 2>/dev/null || true
-
-            if xrandr --output eDP-1 --mode "$expected_mode" 2>/dev/null; then
-                ok "Resolution changed to ${expected_mode}."
+            if xrandr --output eDP-1 --mode 2048x1152 2>/dev/null; then
+                ok "Resolution changed to 2048x1152."
             else
                 warn "Could not apply resolution — your output may not be eDP-1."
                 info "Run 'xrandr' to list outputs and edit ${XRANDR_FILE} accordingly."
             fi
         fi
-    elif [[ "$created_file" == true ]]; then
+    else
         warn "No X session detected. Resolution will change on next login."
     fi
 }
@@ -1129,28 +1129,39 @@ revert_hidpi() {
 }
 
 # -- Stow pre-cleanup ---------------------------------------------------------
-# Remove existing real files at stow targets so symlinks can be created.
-# With --no-folding, stow creates individual file symlinks.  We check each
-# file that stow would deploy and back up any real (non-symlink) target.
+# Remove existing files/dirs at stow targets so symlinks can be created.
+# Scans the actual dotfiles repo to determine which paths would conflict.
 
-cleanup_for_stow() {
-    info "Checking for files that would conflict with stow..."
+# Build the conflict list dynamically from what's actually in the repo.
+# Stow with --no-folding deploys individual file symlinks, so we check
+# each file's target path under $HOME for real (non-symlink) conflicts.
+_build_stow_conflict_paths() {
+    local -a paths=()
 
-    local -a conflicts=()
-
-    # For every file in the repo that stow would deploy, check whether the
-    # corresponding path under $HOME is a real file (not a symlink).
+    # Find all files in the dotfiles dir that stow would deploy.
+    # Exclude repo-level files that aren't stow targets.
     while IFS= read -r -d '' rel_path; do
         local target="${HOME}/${rel_path}"
 
-        # No file at target → no conflict
-        [[ -e "$target" || -L "$target" ]] || continue
+        # For files inside directories (e.g. .config/i3/config),
+        # check the top-level directory — if the whole dir is a real
+        # dir with non-symlink content, it's a conflict.
+        # Also check the file itself for top-level dotfiles (.bashrc, etc.).
+        local top_dir
+        top_dir=$(echo "$rel_path" | cut -d'/' -f1-2)
+        # For .config/X paths, the meaningful unit is .config/X
+        if [[ "$rel_path" == .config/* ]]; then
+            top_dir=$(echo "$rel_path" | cut -d'/' -f1-3)
+        fi
 
-        # Already a symlink (from a previous stow run) → no conflict
-        [[ -L "$target" ]] && continue
+        local target_dir="${HOME}/${top_dir}"
 
-        # Real file exists where stow needs to create a symlink → conflict
-        conflicts+=("$target")
+        # Add the directory (deduplicated later) or the file itself
+        if [[ "$rel_path" == */* ]]; then
+            paths+=("$target_dir")
+        else
+            paths+=("$target")
+        fi
     done < <(
         cd "$DOTFILES_DIR" && \
         find . -mindepth 1 \
@@ -1163,12 +1174,53 @@ cleanup_for_stow() {
             -type f -printf '%P\0'
     )
 
+    # Deduplicate
+    local -A seen=()
+    STOW_CONFLICT_PATHS=()
+    for p in "${paths[@]}"; do
+        if [[ -z "${seen[$p]+x}" ]]; then
+            seen[$p]=1
+            STOW_CONFLICT_PATHS+=("$p")
+        fi
+    done
+}
+
+# Check if a directory is already managed by stow (contains symlinks)
+# On a fresh install, default config dirs only contain real files.
+# After stow --no-folding, they contain symlinks to dotfiles.
+_is_stow_managed_dir() {
+    local dir="$1"
+    [[ -d "$dir" ]] || return 1
+    [[ -n "$(find "$dir" -mindepth 1 -maxdepth 1 -type l -print -quit 2>/dev/null)" ]]
+}
+
+cleanup_for_stow() {
+    info "Checking for files that would conflict with stow..."
+
+    _build_stow_conflict_paths
+
+    local -a conflicts=()
+
+    for path in "${STOW_CONFLICT_PATHS[@]}"; do
+        # Skip if path doesn't exist or is already a symlink
+        [[ -e "$path" ]] || continue
+        [[ -L "$path" ]] && continue
+
+        # With --no-folding, stow creates real dirs with symlinked files inside.
+        # If the dir is already stow-managed, it's not a conflict.
+        if [[ -d "$path" ]] && _is_stow_managed_dir "$path"; then
+            continue
+        fi
+
+        conflicts+=("$path")
+    done
+
     if [[ ${#conflicts[@]} -eq 0 ]]; then
         ok "No conflicting files found. Ready for stow."
         return
     fi
 
-    info "Found ${#conflicts[@]} file(s) that would block stow:"
+    info "Found ${#conflicts[@]} path(s) that would block stow:"
     for c in "${conflicts[@]}"; do
         echo "         $c"
     done
@@ -1207,28 +1259,13 @@ deploy_dotfiles() {
     fi
 
     info "Running stow..."
-
-    # Use -d (stow directory = parent) and package name (basename) rather
-    # than `cd dir && stow .` — the "." package means stow dir and package
-    # are the same thing, which breaks relative symlink path computation.
-    local stow_parent stow_pkg
-    stow_parent="$(dirname "$DOTFILES_DIR")"
-    stow_pkg="$(basename "$DOTFILES_DIR")"
-
+    cd "$DOTFILES_DIR"
     # --no-folding: never replace a real directory with a symlink.
     # Without this, stow may "fold" ~/.config into a single symlink
     # to .dotfiles/.config, destroying configs for Firefox, Thunar, etc.
-    # --restow: first unstow then restow — cleans up stale symlinks from
-    # renamed/deleted files and ensures a consistent state on re-runs.
-    # --ignore: stow's default ignore list covers .git, .gitignore, and
-    # README.* — but NOT .gitmodules or setup-debian13.sh.  Exclude both.
-    stow -d "$stow_parent" \
-        --no-folding --restow \
-        --ignore='setup-debian13\.sh' \
-        --ignore='\.gitmodules' \
-        -v -t "$HOME" \
-        "$stow_pkg"
-
+    # --restow: unstow then restow — cleans stale symlinks on re-runs.
+    # --ignore: setup-debian13.sh is not in stow's default ignore list.
+    stow --no-folding --restow --ignore='setup-debian13\.sh' -v -t "$HOME" .
     ok "Dotfiles deployed via stow."
 }
 
@@ -1454,11 +1491,12 @@ systemctl --user start default.target\
     if [[ -f "$profile" ]] && grep -qF "$startx_marker" "$profile"; then
         ok ".profile already has startx block."
     elif [[ -L "$profile" ]]; then
-        # .profile is a stow symlink — cat >> would modify the repo source.
-        # The startx block should be added to the dotfiles repo instead.
+        # .profile is a stow symlink — cat >> would modify the repo source file.
         if ! grep -qF "$startx_marker" "$profile"; then
             warn ".profile is managed by stow but missing the startx block."
             warn "Add the startx block to .profile in your dotfiles repo."
+        else
+            ok ".profile already has startx block."
         fi
     elif [[ -f "$profile" ]]; then
         info "Appending startx block to .profile..."
