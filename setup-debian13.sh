@@ -2,11 +2,12 @@
 set -euo pipefail
 
 # =============================================================================
-# Debian 13 (Trixie) — i3wm Development Environment Setup
-# Console login → startx → i3  (no display manager)
+# Debian 13 (Trixie) — Development Environment Setup
+# Supports: i3wm desktop (console login → startx → i3) or headless/Citrix
 # Config: github.com/knorg/dotfiles.git  +  GNU Stow
 #
-# Neovim, Emacs (Doom), and Tmux are offered as optional selections.
+# i3 desktop, Neovim, Emacs (Doom), Tmux, Alacritty, and Kitty are
+# offered as optional selections.
 #
 # This script lives in the dotfiles repo. Usage:
 #   git clone https://github.com/knorg/dotfiles.git ~/.dotfiles
@@ -44,10 +45,15 @@ OPT_HIDPI=false
 OPT_HIDPI_REVERT=false
 OPT_HIDPI_HELP=false
 
-# -- Editor/tool selection (set by install_optional_packages) ----------------
+# -- Environment / tool selection (set by collect_choices) --------------------
+OPT_WITH_I3=false
 OPT_WITH_NEOVIM=false
 OPT_WITH_EMACS=false
 OPT_WITH_TMUX=false
+OPT_WITH_ALACRITTY=false
+OPT_WITH_KITTY=false
+OPT_REMOVE_LIGHTDM=false
+OPT_DO_HIDPI=false
 
 # -- Colors for output --------------------------------------------------------
 # ANSI-C quoting ($'...') stores actual escape bytes — works with cat, echo, printf
@@ -129,7 +135,7 @@ parse_args() {
 
 show_help() {
     cat <<EOF
-${BOLD}Debian 13 (Trixie) — i3wm Setup Script${NC}
+${BOLD}Debian 13 (Trixie) — Setup Script${NC}
 
 ${BOLD}Quick start:${NC}
   git clone https://github.com/knorg/dotfiles.git ~/.dotfiles
@@ -141,7 +147,9 @@ ${BOLD}Quick start:${NC}
 ${BOLD}Options:${NC}
   ${BOLD}Install${NC}
     --install           Run full setup (packages, dotfiles, julia, etc.)
-                        Neovim, Emacs, and Tmux are offered interactively.
+                        i3, terminals, editors, and tools are offered
+                        interactively. Also works on Citrix virtual desktops
+                        (skip i3 when prompted).
     --install --hidpi   Full install including HiDPI configuration
 
   ${BOLD}Neovim${NC}
@@ -156,11 +164,13 @@ ${BOLD}Options:${NC}
   ${BOLD}General${NC}
     --help, -h          Show this help
 
-${BOLD}Post-install checklist:${NC}
+${BOLD}Post-install checklist (i3 desktop):${NC}
   • If this is a fresh install, reboot to use console login → startx → i3
   • Verify i3 is the default: ${BOLD}sudo update-alternatives --config x-session-manager${NC}
   • Set GTK theme/icons/fonts: ${BOLD}lxappearance${NC}
   • Adjust compositor effects: ${BOLD}picom-conf${NC}
+
+${BOLD}Post-install checklist (all environments):${NC}
   • If Tmux was selected, install plugins (in a tmux session): ${BOLD}prefix + I${NC}
   • Check Julia: ${BOLD}juliaup status${NC}
   • If Emacs was selected: ${BOLD}systemctl --user status emacs${NC}
@@ -223,13 +233,11 @@ CORE_PACKAGES=(
     curl
     unzip
     openssh-server
-    xinit            # provides startx (no display manager)
     gvfs-backends    # virtual filesystem (MTP, SMB, SFTP in file managers)
     smbclient        # SMB/CIFS network shares
 )
 
 TERMINAL_TOOLS=(
-    alacritty
     mc
     btop
     eza
@@ -239,14 +247,15 @@ TERMINAL_TOOLS=(
     maim
 )
 
+# i3 desktop environment (installed only when i3 is selected)
 I3_DESKTOP=(
+    xinit            # provides startx (no display manager)
     i3
     i3blocks
     picom
     picom-conf
     rofi
     feh
-    xsettingsd
 )
 
 APPEARANCE=(
@@ -273,7 +282,6 @@ APPEARANCE=(
 )
 
 DEV_TOOLS=(
-    npm
     shellcheck
     markdown
 )
@@ -282,6 +290,7 @@ DEV_TOOLS=(
 NEOVIM_DEPS=(
     cmake
     luarocks
+    npm              # needed for tree-sitter-cli
 )
 
 EMACS_DEPS=(
@@ -296,6 +305,14 @@ TMUX_DEPS=(
     tmux-plugin-manager
 )
 
+ALACRITTY_DEPS=(
+    alacritty
+)
+
+KITTY_DEPS=(
+    kitty
+)
+
 HARDWARE=(
     mpv              # media player / camera viewfinder
     v4l-utils        # Video4Linux camera utilities
@@ -307,11 +324,11 @@ HARDWARE=(
     libpam-fprintd
 )
 
-ALL_PACKAGES=(
+# Base packages installed regardless of environment.
+# I3_DESKTOP and APPEARANCE are added conditionally when i3 is selected.
+BASE_PACKAGES=(
     "${CORE_PACKAGES[@]}"
     "${TERMINAL_TOOLS[@]}"
-    "${I3_DESKTOP[@]}"
-    "${APPEARANCE[@]}"
     "${DEV_TOOLS[@]}"
     "${HARDWARE[@]}"
 )
@@ -319,12 +336,16 @@ ALL_PACKAGES=(
 # -- Optional packages (interactive selection) --------------------------------
 # Each entry: "label|package_name|repo_setup_function_or_empty"
 #
-# Virtual packages (prefixed with @) are not installed via apt:
-#   @neovim  — installed from GitHub release
-#   @emacs   — apt deps handled separately via EMACS_DEPS
-#   @tmux    — apt deps handled separately via TMUX_DEPS
+# Virtual packages (prefixed with @) are not installed via apt directly:
+#   @neovim    — installed from GitHub release
+#   @emacs     — apt deps handled separately via EMACS_DEPS
+#   @tmux      — apt deps handled separately via TMUX_DEPS
+#   @alacritty — apt deps handled separately via ALACRITTY_DEPS
+#   @kitty     — apt deps handled separately via KITTY_DEPS
 
 OPTIONAL_PACKAGES=(
+    "Alacritty (GPU-accelerated terminal)|@alacritty|"
+    "Kitty (GPU-accelerated terminal)|@kitty|"
     "Tmux + plugins|@tmux|"
     "Neovim (GitHub release)|@neovim|"
     "Emacs + Doom|@emacs|"
@@ -516,6 +537,16 @@ install_optional_packages() {
 
         # Handle virtual packages (editors and tools)
         case "$pkg" in
+            @alacritty)
+                OPT_WITH_ALACRITTY=true
+                ok "Alacritty selected."
+                continue
+                ;;
+            @kitty)
+                OPT_WITH_KITTY=true
+                ok "Kitty selected."
+                continue
+                ;;
             @tmux)
                 OPT_WITH_TMUX=true
                 ok "Tmux selected — will install with plugin manager."
@@ -542,7 +573,10 @@ install_optional_packages() {
         pkgs_to_install+=("$pkg")
     done
 
-    if [[ ${#pkgs_to_install[@]} -eq 0 && "$OPT_WITH_NEOVIM" != true && "$OPT_WITH_EMACS" != true && "$OPT_WITH_TMUX" != true ]]; then
+    if [[ ${#pkgs_to_install[@]} -eq 0 \
+        && "$OPT_WITH_NEOVIM" != true && "$OPT_WITH_EMACS" != true \
+        && "$OPT_WITH_TMUX" != true && "$OPT_WITH_ALACRITTY" != true \
+        && "$OPT_WITH_KITTY" != true ]]; then
         ok "Nothing to install."
         return
     fi
@@ -561,31 +595,13 @@ install_optional_packages() {
 _is_pkg_installed() {
     local pkg="$1"
     case "$pkg" in
-        @tmux)   command -v tmux &>/dev/null ;;
-        @neovim) command -v nvim &>/dev/null ;;
-        @emacs)  command -v emacs &>/dev/null ;;
-        *)       dpkg -s "$pkg" &>/dev/null ;;
+        @tmux)      command -v tmux &>/dev/null ;;
+        @neovim)    command -v nvim &>/dev/null ;;
+        @emacs)     command -v emacs &>/dev/null ;;
+        @alacritty) command -v alacritty &>/dev/null ;;
+        @kitty)     command -v kitty &>/dev/null ;;
+        *)          dpkg -s "$pkg" &>/dev/null ;;
     esac
-}
-
-# -- Remove lightdm -----------------------------------------------------------
-
-remove_lightdm() {
-    if dpkg -s lightdm &>/dev/null; then
-        info "lightdm display manager is installed."
-        info "This setup uses console login → startx → i3 (no display manager)."
-        if ask_yes_no "Remove lightdm and lightdm-gtk-greeter?"; then
-            info "Removing lightdm display manager..."
-            sudo apt remove --purge -y lightdm lightdm-gtk-greeter 2>/dev/null || true
-            sudo apt autoremove --purge -y
-            ok "lightdm removed."
-        else
-            warn "Keeping lightdm. Console login via startx will still be configured,"
-            warn "but lightdm may start instead on boot."
-        fi
-    else
-        ok "lightdm not installed."
-    fi
 }
 
 # -- Neovim from GitHub releases ---------------------------------------------
@@ -1518,6 +1534,109 @@ EOF
 # Main
 # =============================================================================
 
+# -- Upfront Q&A — collect all choices before executing -----------------------
+
+collect_choices() {
+    # 1. i3 desktop environment
+    info "--- Desktop Environment ---"
+    echo ""
+    if command -v i3 &>/dev/null; then
+        OPT_WITH_I3=true
+        ok "i3 already installed — will maintain."
+    else
+        echo -e "    This script can install the ${BOLD}i3 window manager${NC} with picom,"
+        echo -e "    rofi, GTK themes, and console login via startx."
+        echo -e "    Skip this if you are setting up a ${BOLD}Citrix virtual desktop${NC}"
+        echo -e "    or another environment that provides its own window manager."
+        echo ""
+        if ask_yes_no "Install i3 desktop environment?"; then
+            OPT_WITH_I3=true
+        else
+            ok "Skipping i3 — will install terminal tools and editors only."
+        fi
+    fi
+    echo ""
+
+    # 2. Optional packages (interactive menu)
+    info "--- Optional Packages ---"
+    install_optional_packages
+    echo ""
+
+    # Auto-detect already-installed tools so re-runs maintain them
+    # even if the user skips the optional selection prompt.
+    command -v i3        &>/dev/null && OPT_WITH_I3=true
+    command -v nvim      &>/dev/null && OPT_WITH_NEOVIM=true
+    command -v emacs     &>/dev/null && OPT_WITH_EMACS=true
+    command -v tmux      &>/dev/null && OPT_WITH_TMUX=true
+    command -v alacritty &>/dev/null && OPT_WITH_ALACRITTY=true
+    command -v kitty     &>/dev/null && OPT_WITH_KITTY=true
+
+    # 3. Remove lightdm (only relevant with i3)
+    if [[ "$OPT_WITH_I3" == true ]]; then
+        if dpkg -s lightdm &>/dev/null; then
+            info "--- Display Manager ---"
+            info "lightdm is installed. This setup uses console login → startx → i3."
+            if ask_yes_no "Remove lightdm and lightdm-gtk-greeter?"; then
+                OPT_REMOVE_LIGHTDM=true
+            else
+                warn "Keeping lightdm. Console login via startx will still be configured,"
+                warn "but lightdm may start instead on boot."
+            fi
+            echo ""
+        fi
+    fi
+
+    # 4. HiDPI (only with i3 and --hidpi flag)
+    if [[ "$OPT_HIDPI" == true && "$OPT_WITH_I3" == true ]]; then
+        info "--- HiDPI ---"
+        if detect_hidpi; then
+            info "HiDPI display detected."
+            if ask_yes_no "Apply HiDPI fixes (GRUB font + xrandr scaling)?"; then
+                OPT_DO_HIDPI=true
+            fi
+        else
+            info "No HiDPI display detected."
+            if ask_yes_no "Apply HiDPI fixes anyway?"; then
+                OPT_DO_HIDPI=true
+            fi
+        fi
+        echo ""
+    fi
+
+    # -- Summary of choices --
+    echo ""
+    info "--- Selection Summary ---"
+    _choice_line "i3 desktop"  "$OPT_WITH_I3"
+    _choice_line "Alacritty"   "$OPT_WITH_ALACRITTY"
+    _choice_line "Kitty"       "$OPT_WITH_KITTY"
+    _choice_line "Tmux"        "$OPT_WITH_TMUX"
+    _choice_line "Neovim"      "$OPT_WITH_NEOVIM"
+    _choice_line "Emacs+Doom"  "$OPT_WITH_EMACS"
+    if [[ "$OPT_WITH_I3" == true ]]; then
+        _choice_line "HiDPI"   "$OPT_DO_HIDPI"
+    fi
+    echo ""
+
+    if ! ask_yes_no "Proceed with installation?"; then
+        ok "Aborted."
+        exit 0
+    fi
+    echo ""
+}
+
+_choice_line() {
+    local label="$1" enabled="$2"
+    if [[ "$enabled" == true ]]; then
+        echo -e "    ${GREEN}✓${NC}  ${label}"
+    else
+        echo -e "    ${RED}✗${NC}  ${label}"
+    fi
+}
+
+# =============================================================================
+# Main
+# =============================================================================
+
 main() {
     parse_args "$@"
 
@@ -1577,29 +1696,40 @@ main() {
 
     echo ""
     echo "==========================================="
-    echo "  Debian 13 (Trixie) — i3wm Setup Script  "
+    echo "  Debian 13 (Trixie) — Setup Script        "
     echo "==========================================="
     echo ""
 
     need_root
 
-    # 1. Debian packages
-    info "--- Debian Packages ---"
-    install_missing_packages "${ALL_PACKAGES[@]}"
+    # ── Phase 1: Collect all choices upfront ─────────────────────────────────
+    collect_choices
+
+    # ── Phase 2: Execute (no more interactive prompts) ───────────────────────
+
+    # 1. Base Debian packages (always installed)
+    info "--- Base Packages ---"
+    install_missing_packages "${BASE_PACKAGES[@]}"
     echo ""
 
-    # 2. Optional packages (interactive — includes editor/tool selection)
-    info "--- Optional Packages ---"
-    install_optional_packages
-    echo ""
-
-    # Auto-detect already-installed editors/tools so re-runs still maintain
-    # them even if the user skips the optional selection prompt.
-    command -v nvim  &>/dev/null && OPT_WITH_NEOVIM=true
-    command -v emacs &>/dev/null && OPT_WITH_EMACS=true
-    command -v tmux  &>/dev/null && OPT_WITH_TMUX=true
+    # 2. i3 desktop packages (conditional)
+    if [[ "$OPT_WITH_I3" == true ]]; then
+        info "--- i3 Desktop Packages ---"
+        install_missing_packages "${I3_DESKTOP[@]}" "${APPEARANCE[@]}"
+        echo ""
+    fi
 
     # 3. Optional tool dependencies (apt packages for selected tools)
+    if [[ "$OPT_WITH_ALACRITTY" == true ]]; then
+        info "--- Alacritty ---"
+        install_missing_packages "${ALACRITTY_DEPS[@]}"
+        echo ""
+    fi
+    if [[ "$OPT_WITH_KITTY" == true ]]; then
+        info "--- Kitty ---"
+        install_missing_packages "${KITTY_DEPS[@]}"
+        echo ""
+    fi
     if [[ "$OPT_WITH_TMUX" == true ]]; then
         info "--- Tmux Dependencies ---"
         install_missing_packages "${TMUX_DEPS[@]}"
@@ -1616,10 +1746,15 @@ main() {
         echo ""
     fi
 
-    # 4. Remove lightdm
-    info "--- Remove Display Manager ---"
-    remove_lightdm
-    echo ""
+    # 4. Remove lightdm (decision was already made in collect_choices)
+    if [[ "$OPT_REMOVE_LIGHTDM" == true ]]; then
+        info "--- Remove Display Manager ---"
+        info "Removing lightdm display manager..."
+        sudo apt remove --purge -y lightdm lightdm-gtk-greeter 2>/dev/null || true
+        sudo apt autoremove --purge -y
+        ok "lightdm removed."
+        echo ""
+    fi
 
     # 5. Neovim
     if [[ "$OPT_WITH_NEOVIM" == true ]]; then
@@ -1654,33 +1789,13 @@ main() {
         echo ""
     fi
 
-    # 9. HiDPI setup
-    info "--- HiDPI ---"
-    if [[ "$OPT_HIDPI" == true ]]; then
-        local do_hidpi=false
-
-        if detect_hidpi; then
-            info "HiDPI display detected."
-            if ask_yes_no "Apply HiDPI fixes (GRUB font + xrandr scaling)?"; then
-                do_hidpi=true
-            fi
-        else
-            info "No HiDPI display detected."
-            if ask_yes_no "Apply HiDPI fixes anyway?"; then
-                do_hidpi=true
-            fi
-        fi
-
-        if [[ "$do_hidpi" == true ]]; then
-            setup_hidpi_grub
-            setup_hidpi_desktop
-        else
-            ok "Skipping HiDPI setup."
-        fi
-    else
-        ok "Skipping HiDPI setup (use --hidpi or --install --hidpi to configure)."
+    # 9. HiDPI setup (decision was already made in collect_choices)
+    if [[ "$OPT_DO_HIDPI" == true ]]; then
+        info "--- HiDPI ---"
+        setup_hidpi_grub
+        setup_hidpi_desktop
+        echo ""
     fi
-    echo ""
 
     # 10. Stow pre-cleanup
     info "--- Stow Pre-Cleanup ---"
@@ -1709,10 +1824,12 @@ main() {
     install_julia
     echo ""
 
-    # 15. startx + i3 login
-    info "--- Console Login → i3 ---"
-    setup_startx_login
-    echo ""
+    # 15. startx + i3 login (only with i3)
+    if [[ "$OPT_WITH_I3" == true ]]; then
+        info "--- Console Login → i3 ---"
+        setup_startx_login
+        echo ""
+    fi
 
     # -- Summary --
     echo "==========================================="
@@ -1720,10 +1837,12 @@ main() {
     ok "Setup complete!"
     echo ""
     info "Post-install checklist:"
-    echo "  • If this is a fresh install, reboot to use console login → startx → i3"
-    echo "  • Verify i3 is the default: ${BOLD}sudo update-alternatives --config x-session-manager${NC}"
-    echo "  • Set GTK theme/icons/fonts: ${BOLD}lxappearance${NC}"
-    echo "  • Adjust compositor effects: ${BOLD}picom-conf${NC}"
+    if [[ "$OPT_WITH_I3" == true ]]; then
+        echo "  • If this is a fresh install, reboot to use console login → startx → i3"
+        echo "  • Verify i3 is the default: ${BOLD}sudo update-alternatives --config x-session-manager${NC}"
+        echo "  • Set GTK theme/icons/fonts: ${BOLD}lxappearance${NC}"
+        echo "  • Adjust compositor effects: ${BOLD}picom-conf${NC}"
+    fi
     if [[ "$OPT_WITH_TMUX" == true ]]; then
         echo "  • Install tmux plugins (in a tmux session): ${BOLD}prefix + I${NC}"
     fi
