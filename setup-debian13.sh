@@ -484,7 +484,11 @@ CITRIX
     ok "Ctrl+F2 fullscreen toggle enabled."
 }
 
-install_optional_packages() {
+# Deferred selections from Q&A — filled by select_optional_packages,
+# consumed by install_selected_optional_packages.
+SELECTED_OPT_PKGS=()
+
+select_optional_packages() {
     info "Optional packages:"
     echo ""
 
@@ -513,9 +517,6 @@ install_optional_packages() {
         return
     fi
 
-    local -a repos_added=()
-    local -a pkgs_to_install=()
-
     for num in $reply; do
         # Validate
         if [[ ! "$num" =~ ^[0-9]+$ ]] || (( num < 1 || num > ${#OPTIONAL_PACKAGES[@]} )); then
@@ -527,7 +528,6 @@ install_optional_packages() {
         local label="${entry%%|*}"
         local rest="${entry#*|}"
         local pkg="${rest%%|*}"
-        local repo_fn="${rest#*|}"
 
         # Skip if already installed
         if _is_pkg_installed "$pkg"; then
@@ -564,6 +564,30 @@ install_optional_packages() {
                 ;;
         esac
 
+        # Non-virtual package — defer to install phase
+        SELECTED_OPT_PKGS+=("$entry")
+        ok "${label} selected."
+    done
+}
+
+# Phase 2: set up repos, refresh apt, install non-virtual optional packages.
+# Called after base packages (including curl, gpg) are in place.
+install_selected_optional_packages() {
+    if [[ ${#SELECTED_OPT_PKGS[@]} -eq 0 ]]; then
+        return
+    fi
+
+    info "--- Optional Packages (apt) ---"
+
+    local -a repos_added=()
+    local -a pkgs_to_install=()
+
+    for entry in "${SELECTED_OPT_PKGS[@]}"; do
+        local label="${entry%%|*}"
+        local rest="${entry#*|}"
+        local pkg="${rest%%|*}"
+        local repo_fn="${rest#*|}"
+
         # Set up external repo if needed
         if [[ -n "$repo_fn" ]]; then
             "$repo_fn"
@@ -572,14 +596,6 @@ install_optional_packages() {
 
         pkgs_to_install+=("$pkg")
     done
-
-    if [[ ${#pkgs_to_install[@]} -eq 0 \
-        && "$OPT_WITH_NEOVIM" != true && "$OPT_WITH_EMACS" != true \
-        && "$OPT_WITH_TMUX" != true && "$OPT_WITH_ALACRITTY" != true \
-        && "$OPT_WITH_KITTY" != true ]]; then
-        ok "Nothing to install."
-        return
-    fi
 
     # Refresh apt if repos were added
     if [[ ${#repos_added[@]} -gt 0 ]]; then
@@ -1557,9 +1573,9 @@ collect_choices() {
     fi
     echo ""
 
-    # 2. Optional packages (interactive menu)
+    # 2. Optional packages (interactive menu — selection only, no install yet)
     info "--- Optional Packages ---"
-    install_optional_packages
+    select_optional_packages
     echo ""
 
     # Auto-detect already-installed tools so re-runs maintain them
@@ -1719,7 +1735,12 @@ main() {
         echo ""
     fi
 
-    # 3. Optional tool dependencies (apt packages for selected tools)
+    # 3. Non-virtual optional packages (Brave, VS Code, Citrix, etc.)
+    #    Repo setup functions (curl, gpg) run here — after base packages.
+    install_selected_optional_packages
+    echo ""
+
+    # 4. Optional tool dependencies (apt packages for selected tools)
     if [[ "$OPT_WITH_ALACRITTY" == true ]]; then
         info "--- Alacritty ---"
         install_missing_packages "${ALACRITTY_DEPS[@]}"
