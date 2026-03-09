@@ -117,19 +117,12 @@ if ! shopt -oq posix; then
   fi
 fi
 
-# >>> juliaup initialize >>>
+# juliaup PATH (portable — no hardcoded username)
+if [ -d "$HOME/.juliaup/bin" ]; then
+    case ":$PATH:" in
+        *:"$HOME/.juliaup/bin":*) ;;
+        *) export PATH="$HOME/.juliaup/bin${PATH:+:$PATH}" ;;
+    esac
+fi
 
-# !! Contents within this block are managed by juliaup !!
-
-case ":$PATH:" in
-    *:/home/mbm/.juliaup/bin:*)
-        ;;
-
-    *)
-        export PATH=/home/mbm/.juliaup/bin${PATH:+:${PATH}}
-        ;;
-esac
-
-# <<< juliaup initialize <<<
-
-export PATH="~/.config/emacs/bin:$PATH"
+export PATH="$HOME/.config/emacs/bin:$PATH"
