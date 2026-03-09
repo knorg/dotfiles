@@ -32,26 +32,26 @@ Your modifier key is =Super= (the Windows key), referred to as =$mod= in the con
 
 ** Launching things
 
-| Key              | Action                               |
-|------------------+--------------------------------------|
-| =$mod + Return=  | Open Alacritty terminal              |
+| Key              | Action                                  |
+|------------------+-----------------------------------------|
+| =$mod + Return=  | Open Alacritty terminal                 |
 | =$mod + d=       | Open Rofi (app launcher — start typing) |
-| =$mod + Shift+e= | Exit i3 (logout prompt)              |
-| =$mod + Shift+r= | Reload i3 config (after edits)       |
-| =$mod + Shift+c= | Restart i3 in place                  |
+| =$mod + Shift+e= | Exit i3 (logout prompt)                 |
+| =$mod + Shift+r= | Reload i3 config (after edits)          |
+| =$mod + Shift+c= | Restart i3 in place                     |
 
 ** Window focus and movement
 
-| Key                   | Action                               |
-|-----------------------+--------------------------------------|
-| =$mod + h/j/k/l=      | Focus left / down / up / right       |
+| Key                    | Action                               |
+|------------------------+--------------------------------------|
+| =$mod + h/j/k/l=       | Focus left / down / up / right       |
 | =$mod + Shift+h/j/k/l= | Move window left / down / up / right |
-| =$mod + arrow keys=   | Also works for focus                 |
-| =$mod + f=            | Toggle fullscreen                    |
-| =$mod + Shift+space=  | Toggle floating                      |
-| =$mod + space=        | Toggle focus between tiling/floating |
-| =$mod + a=            | Focus parent container               |
-| =$mod + q=            | Kill (close) focused window          |
+| =$mod + arrow keys=    | Also works for focus                 |
+| =$mod + f=             | Toggle fullscreen                    |
+| =$mod + Shift+space=   | Toggle floating                      |
+| =$mod + space=         | Toggle focus between tiling/floating |
+| =$mod + a=             | Focus parent container               |
+| =$mod + q=             | Kill (close) focused window          |
 
 ** Layout
 
@@ -92,9 +92,9 @@ Press =$mod + r= to enter resize mode. The status bar shows =resize=.
 
 Your config includes i3-gaps support:
 
-| Key                   | Action                           |
-|-----------------------+----------------------------------|
-| =$mod + Shift+g=       | Enter gaps mode (see i3 config)  |
+| Key              | Action                          |
+|------------------+---------------------------------|
+| =$mod + Shift+g= | Enter gaps mode (see i3 config) |
 
 Inside gaps mode you can adjust inner/outer gaps. Press =Escape= to exit.
 
@@ -116,12 +116,12 @@ Config lives at =~/.config/i3status/config=.
 
 ** Customization files
 
-| File                       | Purpose                        |
-|----------------------------+--------------------------------|
-| =~/.config/i3/config=      | Main i3 config (keybindings, autostart, workspaces) |
-| =~/.config/i3status/config= | Status bar contents           |
-| =~/.config/picom/picom.conf=| Compositor (transparency, shadows, fading) |
-| =~/.config/rofi/=          | Rofi launcher theme            |
+| File                         | Purpose                                             |
+|------------------------------+-----------------------------------------------------|
+| =~/.config/i3/config=        | Main i3 config (keybindings, autostart, workspaces) |
+| =~/.config/i3status/config=  | Status bar contents                                 |
+| =~/.config/picom/picom.conf= | Compositor (transparency, shadows, fading)          |
+| =~/.config/rofi/=            | Rofi launcher theme                                 |
 
 After editing i3 config, press =$mod + Shift+r= to reload.
 
@@ -172,21 +172,21 @@ Nearly every command starts with =SPC= (spacebar). Doom shows a popup
 *If you ever get lost*, just press =SPC= and wait — the popup tells you
 everything available. Other ways to discover keybindings:
 
-| Key       | Action                                     |
-|-----------+--------------------------------------------|
+| Key       | Action                                             |
+|-----------+----------------------------------------------------|
 | =SPC h k= | Describe a key — press any key to see what it does |
-| =SPC h w= | Where-is — type a command name, see its key |
-| =SPC h f= | Describe function — look up any command     |
+| =SPC h w= | Where-is — type a command name, see its key        |
+| =SPC h f= | Describe function — look up any command            |
 
 *** Doom config files
 
 Your configuration lives in three files:
 
-| File                       | Purpose                                |
-|----------------------------+----------------------------------------|
-| =~/.config/doom/init.el=   | Enable/disable modules (e.g. =:lang julia=) |
-| =~/.config/doom/config.el= | Your personal config (keybinds, faces, settings) |
-| =~/.config/doom/packages.el= | Extra packages (e.g. ef-themes, denote) |
+| File                         | Purpose                                          |
+|------------------------------+--------------------------------------------------|
+| =~/.config/doom/init.el=     | Enable/disable modules (e.g. =:lang julia=)      |
+| =~/.config/doom/config.el=   | Your personal config (keybinds, faces, settings) |
+| =~/.config/doom/packages.el= | Extra packages (e.g. ef-themes, denote)          |
 
 After editing =config.el=, run =SPC h r r= (=doom/reload=) to apply changes
 without restarting. For =init.el= or =packages.el= changes, you need to
@@ -201,17 +201,17 @@ systemctl --user restart emacs
 
 These are configured in your =config.el=:
 
-| Setting                                    | Key / value                              |
-|--------------------------------------------+------------------------------------------|
-| Line numbers                               | Relative (=5j= jumps exactly 5 lines)   |
-| Theme                                      | =modus-vivendi-tinted= (dark)            |
-| Theme toggle (dark ↔ light)                | =SPC t L= (handles doom/ef/modus themes)|
-| Keyword face                               | Custom red (=#e80004=) for all keywords  |
-| i3 config syntax highlighting              | Colorized syntax, monochrome comments    |
-| Rainbow-mode in i3 config                  | Hex colors shown inline (not in comments)|
-| Magit status                               | Opens fullscreen, word-level diff        |
-| Completion                                 | corfu (+orderless) + vertico (+icons)    |
-| Default terminal                           | Alacritty (vterm inside Emacs)           |
+| Setting                       | Key / value                               |
+|-------------------------------+-------------------------------------------|
+| Line numbers                  | Relative (=5j= jumps exactly 5 lines)     |
+| Theme                         | =modus-vivendi-tinted= (dark)             |
+| Theme toggle (dark ↔ light)   | =SPC t L= (handles doom/ef/modus themes)  |
+| Keyword face                  | Custom red (=#e80004=) for all keywords   |
+| i3 config syntax highlighting | Colorized syntax, monochrome comments     |
+| Rainbow-mode in i3 config     | Hex colors shown inline (not in comments) |
+| Magit status                  | Opens fullscreen, word-level diff         |
+| Completion                    | corfu (+orderless) + vertico (+icons)     |
+| Default terminal              | Alacritty (vterm inside Emacs)            |
 
 ** Navigation
 
@@ -220,25 +220,25 @@ These are configured in your =config.el=:
 Emacs uses *Vim keybindings* (evil-mode) by default in Doom. You start
 in *Normal mode* — the cursor moves but you're not inserting text.
 
-| Key              | Action                                |
-|------------------+---------------------------------------|
-| =h / j / k / l=  | Left / down / up / right             |
-| =w=              | Jump forward one word                 |
-| =b=              | Jump backward one word                |
-| =e=              | Jump to end of current word           |
-| =0=              | Beginning of line                     |
-| =^=              | First non-blank character on line     |
-| =$=              | End of line                           |
-| =gg=             | Top of file                           |
-| =G=              | Bottom of file                        |
-| =C-d=            | Scroll down half page                 |
-| =C-u=            | Scroll up half page                   |
-| ={= / =}=        | Previous / next paragraph             |
-| =:42=            | Jump to line 42                       |
-| =/pattern=       | Search forward (=n= next, =N= prev)  |
-| =?pattern=       | Search backward                       |
-| =*=              | Search for word under cursor forward  |
-| =#=              | Search for word under cursor backward |
+| Key             | Action                                |
+|-----------------+---------------------------------------|
+| =h / j / k / l= | Left / down / up / right              |
+| =w=             | Jump forward one word                 |
+| =b=             | Jump backward one word                |
+| =e=             | Jump to end of current word           |
+| =0=             | Beginning of line                     |
+| =^=             | First non-blank character on line     |
+| =$=             | End of line                           |
+| =gg=            | Top of file                           |
+| =G=             | Bottom of file                        |
+| =C-d=           | Scroll down half page                 |
+| =C-u=           | Scroll up half page                   |
+| ={= / =}=       | Previous / next paragraph             |
+| =:42=           | Jump to line 42                       |
+| =/pattern=      | Search forward (=n= next, =N= prev)   |
+| =?pattern=      | Search backward                       |
+| =*=             | Search for word under cursor forward  |
+| =#=             | Search for word under cursor backward |
 
 Line numbers are *relative* (your config), so =5j= moves down exactly
 5 lines and =12k= moves up exactly 12 lines.
@@ -903,12 +903,15 @@ Org supports three kinds of lists. Unordered lists use =-= or =+=.
 Ordered lists use =1.= or =1)=. Description lists use =::= after the
 term.
 
-| Key             | Action                            |
-|-----------------+-----------------------------------|
-| =M-RET=         | New list item at same level       |
-| =M-left/right=  | Change list indentation           |
-| =C-c C-c=       | Toggle checkbox =[X]= / =[ ]=    |
-| =C-c -=         | Cycle list bullet style           |
+| Key            | Action                        |
+|----------------+-------------------------------|
+| =M-RET=        | New list item at same level   |
+| =M-left/right= | Change list indentation       |
+| =C-c C-c=      | Toggle checkbox =[X]= / =[ ]= |
+(use-package! valign
+  :hook (org-mode . valign-mode)
+  :config
+  (setq valign-fancy-bar t))   ; optional: nicer separator bars| =C-c -=         | Cycle list bullet style           |
 
 *** TODO items
 
@@ -1114,15 +1117,15 @@ What you see:
 You can modify tasks directly from the agenda without opening the
 source file:
 
-| Key         | Action                                    |
-|-------------+-------------------------------------------|
-| =t=         | Cycle TODO state (fast-select: t/n/w/d/c) |
-| =SPC m d=   | Set or change deadline                    |
-| =SPC m s=   | Set or change scheduled date              |
-| =:=         | Set tags                                   |
-| =,=         | Set priority (A/B/C)                       |
-| =I=         | Clock in (start tracking time)             |
-| =O=         | Clock out (stop tracking time)             |
+| Key       | Action                                    |
+|-----------+-------------------------------------------|
+| =t=       | Cycle TODO state (fast-select: t/n/w/d/c) |
+| =SPC m d= | Set or change deadline                    |
+| =SPC m s= | Set or change scheduled date              |
+| =:=       | Set tags                                  |
+| =,=       | Set priority (A/B/C)                      |
+| =I=       | Clock in (start tracking time)            |
+| =O=       | Clock out (stop tracking time)            |
 
 *** Filtering
 

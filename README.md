@@ -58,16 +58,14 @@ run without re-selecting them at the interactive prompt.
 
 The base install (before optional selections) includes:
 
-| Category | Packages |
-|---|---|
-| **Terminal** | Alacritty, mc, btop, eza, ripgrep, fd-find |
-| **i3 Desktop** | i3, i3blocks, picom, picom-conf, rofi, feh |
-| **Screenshots** | maim + xclip (keyboard-driven capture to clipboard) |
-| **Camera** | mpv + v4l-utils (UVC webcam preview and control) |
-| **Appearance** | lxappearance, Arc/Greybird/Numix/Orchis themes, Papirus/Faenza/Moka icons, color-picker |
-| **Dev** | npm, shellcheck, markdown |
-| **Network** | gvfs-backends, smbclient |
-| **Fonts** | CascadiaMono Nerd Font, Monaspace (5-family superfamily), DejaVu, Font Awesome, Symbola |
+- **Terminal** — Alacritty, mc, btop, eza, ripgrep, fd-find
+- **i3 Desktop** — i3, i3blocks, picom, picom-conf, rofi, feh
+- **Screenshots** — maim + xclip (keyboard-driven capture to clipboard)
+- **Camera** — mpv + v4l-utils (UVC webcam preview and control)
+- **Appearance** — lxappearance, Arc/Greybird/Numix/Orchis themes, Papirus/Faenza/Moka icons, color-picker
+- **Dev** — npm, shellcheck, markdown
+- **Network** — gvfs-backends, smbclient
+- **Fonts** — CascadiaMono Nerd Font, Monaspace (5-family superfamily), DejaVu, Font Awesome, Symbola
 
 The `.bashrc` aliases `ls` to `eza` with icons, git status, and directory-first sorting.
 
@@ -78,17 +76,15 @@ by TJ DeVries, extended with additional plugins and keybindings.
 
 ### Configured Plugins
 
-| Plugin | Purpose |
-|---|---|
-| **Lazy.nvim** | Plugin manager with lazy-loading |
-| **Telescope** | Fuzzy finder (files, grep, buffers, LSP symbols) with fzf-native and ui-select |
-| **blink.cmp** | Autocompletion engine with LSP, snippet, and path sources |
-| **mini.files** | Lightweight file browser |
-| **mini.operators** | Replace and exchange text operators |
-| **Neogit** | Git interface (Magit-inspired) |
-| **tree-sitter** | Incremental syntax highlighting |
-| **which-key** | Displays available keybindings after pressing a leader key |
-| **LSP** (built-in) | Language server support for completions, diagnostics, go-to-definition |
+- **Lazy.nvim** — Plugin manager with lazy-loading
+- **Telescope** — Fuzzy finder (files, grep, buffers, LSP symbols) with fzf-native and ui-select
+- **blink.cmp** — Autocompletion engine with LSP, snippet, and path sources
+- **mini.files** — Lightweight file browser
+- **mini.operators** — Replace and exchange text operators
+- **Neogit** — Git interface (Magit-inspired)
+- **tree-sitter** — Incremental syntax highlighting
+- **which-key** — Displays available keybindings after pressing a leader key
+- **LSP** (built-in) — Language server support for completions, diagnostics, go-to-definition
 
 The full configuration lives in `.config/nvim/init.lua`. Plugins are pinned via
 `lazy-lock.json` for reproducibility across machines.
