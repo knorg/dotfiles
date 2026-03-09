@@ -3,11 +3,11 @@ set -euo pipefail
 
 # =============================================================================
 # Debian 13 (Trixie) — Development Environment Setup
-# Supports: i3wm desktop (console login → startx → i3) or headless/Citrix
+# Supports: i3wm, Xfce4, both, or headless (Citrix VDI compatible)
 # Config: github.com/knorg/dotfiles.git  +  GNU Stow
 #
-# i3 desktop, Neovim, Emacs (Doom), Tmux, Alacritty, and Kitty are
-# offered as optional selections.
+# Desktop environment (i3, Xfce4, or both), terminals (Alacritty, Kitty),
+# editors (Neovim, Emacs/Doom), and Tmux are offered as optional selections.
 #
 # This script lives in the dotfiles repo. Usage:
 #   git clone https://github.com/knorg/dotfiles.git ~/.dotfiles
@@ -47,6 +47,7 @@ OPT_HIDPI_HELP=false
 
 # -- Environment / tool selection (set by collect_choices) --------------------
 OPT_WITH_I3=false
+OPT_WITH_XFCE=false
 OPT_WITH_NEOVIM=false
 OPT_WITH_EMACS=false
 OPT_WITH_TMUX=false
@@ -147,9 +148,9 @@ ${BOLD}Quick start:${NC}
 ${BOLD}Options:${NC}
   ${BOLD}Install${NC}
     --install           Run full setup (packages, dotfiles, julia, etc.)
-                        i3, terminals, editors, and tools are offered
-                        interactively. Also works on Citrix virtual desktops
-                        (skip i3 when prompted).
+                        Desktop (i3, Xfce4, or both), terminals, editors,
+                        and tools are offered interactively.
+                        For Citrix VDI: select Xfce4 when prompted.
     --install --hidpi   Full install including HiDPI configuration
 
   ${BOLD}Neovim${NC}
@@ -164,13 +165,13 @@ ${BOLD}Options:${NC}
   ${BOLD}General${NC}
     --help, -h          Show this help
 
-${BOLD}Post-install checklist (i3 desktop):${NC}
+${BOLD}Post-install checklist (i3):${NC}
   • If this is a fresh install, reboot to use console login → startx → i3
   • Verify i3 is the default: ${BOLD}sudo update-alternatives --config x-session-manager${NC}
-  • Set GTK theme/icons/fonts: ${BOLD}lxappearance${NC}
-  • Adjust compositor effects: ${BOLD}picom-conf${NC}
 
 ${BOLD}Post-install checklist (all environments):${NC}
+  • Set GTK theme/icons/fonts: ${BOLD}lxappearance${NC}
+  • Adjust compositor effects: ${BOLD}picom-conf${NC}
   • If Tmux was selected, install plugins (in a tmux session): ${BOLD}prefix + I${NC}
   • Check Julia: ${BOLD}juliaup status${NC}
   • If Emacs was selected: ${BOLD}systemctl --user status emacs${NC}
@@ -248,15 +249,24 @@ TERMINAL_TOOLS=(
     maim
 )
 
-# i3 desktop environment (installed only when i3 is selected)
-I3_DESKTOP=(
-    xinit            # provides startx (no display manager)
-    i3
-    i3blocks
+# Desktop tools installed with any DE/WM (i3, Xfce, or both)
+DESKTOP_SHARED=(
     picom
     picom-conf
     rofi
+)
+
+# i3-specific packages (only when i3 is selected)
+I3_PACKAGES=(
+    xinit            # provides startx (no display manager)
+    i3
+    i3blocks
     feh
+)
+
+# Xfce4 packages (only when Xfce is selected)
+XFCE_PACKAGES=(
+    xfce4
 )
 
 APPEARANCE=(
@@ -325,11 +335,14 @@ HARDWARE=(
     libpam-fprintd
 )
 
-# Base packages installed regardless of environment.
-# I3_DESKTOP and APPEARANCE are added conditionally when i3 is selected.
+# Base packages installed regardless of DE/WM choice.
+# DESKTOP_SHARED, APPEARANCE, and HARDWARE are always installed.
+# I3_PACKAGES / XFCE_PACKAGES are added conditionally.
 BASE_PACKAGES=(
     "${CORE_PACKAGES[@]}"
     "${TERMINAL_TOOLS[@]}"
+    "${DESKTOP_SHARED[@]}"
+    "${APPEARANCE[@]}"
     "${DEV_TOOLS[@]}"
     "${HARDWARE[@]}"
 )
@@ -1488,8 +1501,10 @@ install_julia() {
     fi
 
     info "Installing Julia via juliaup (user-level)..."
-    # juliaup installer — installs to ~/.juliaup, adds to PATH
-    curl -fsSL "$JULIA_INSTALL_SCRIPT" | sh -s -- --yes
+    # JULIAUP_INIT_PATH=no prevents the installer from appending hardcoded
+    # PATH blocks to .bashrc/.profile — the dotfiles already handle PATH
+    # portably, and writing through stow symlinks would pollute the repo.
+    JULIAUP_INIT_PATH=no curl -fsSL "$JULIA_INSTALL_SCRIPT" | sh -s -- --yes
 
     # Source the updated PATH so julia is available for the rest of this script
     export PATH="${HOME}/.juliaup/bin:${PATH}"
@@ -1597,23 +1612,44 @@ EOF
 # -- Upfront Q&A — collect all choices before executing -----------------------
 
 collect_choices() {
-    # 1. i3 desktop environment
+    # 1. Desktop environment / window manager
     info "--- Desktop Environment ---"
     echo ""
-    if command -v i3 &>/dev/null; then
+
+    # Auto-detect already-installed DEs
+    local i3_installed=false xfce_installed=false
+    command -v i3    &>/dev/null && i3_installed=true
+    command -v xfce4-session &>/dev/null && xfce_installed=true
+
+    if [[ "$i3_installed" == true && "$xfce_installed" == true ]]; then
+        OPT_WITH_I3=true
+        OPT_WITH_XFCE=true
+        ok "i3 and Xfce4 already installed — will maintain both."
+    elif [[ "$i3_installed" == true ]]; then
         OPT_WITH_I3=true
         ok "i3 already installed — will maintain."
+    elif [[ "$xfce_installed" == true ]]; then
+        OPT_WITH_XFCE=true
+        ok "Xfce4 already installed — will maintain."
     else
-        echo -e "    This script can install the ${BOLD}i3 window manager${NC} with picom,"
-        echo -e "    rofi, GTK themes, and console login via startx."
-        echo -e "    Skip this if you are setting up a ${BOLD}Citrix virtual desktop${NC}"
-        echo -e "    or another environment that provides its own window manager."
+        echo -e "    ${BOLD}1)${NC}  i3 (tiling WM, console login → startx)"
+        echo -e "    ${BOLD}2)${NC}  Xfce4 (full desktop — required for Citrix VDI)"
+        echo -e "    ${BOLD}3)${NC}  Both (i3 + Xfce4)"
+        echo -e "    ${BOLD}0)${NC}  None — terminal tools and editors only"
         echo ""
-        if ask_yes_no "Install i3 desktop environment?"; then
-            OPT_WITH_I3=true
-        else
-            ok "Skipping i3 — will install terminal tools and editors only."
-        fi
+
+        local de_reply
+        while true; do
+            read -rp "$(echo -e "${YELLOW}[????]${NC}  Select desktop environment [0-3]: ")" de_reply
+            case "$de_reply" in
+                0) ok "Skipping DE — will install terminal tools and editors only." ; break ;;
+                1) OPT_WITH_I3=true   ; ok "i3 selected." ; break ;;
+                2) OPT_WITH_XFCE=true ; ok "Xfce4 selected." ; break ;;
+                3) OPT_WITH_I3=true ; OPT_WITH_XFCE=true
+                   ok "Both i3 and Xfce4 selected." ; break ;;
+                *) echo "  Please enter 0, 1, 2, or 3." ;;
+            esac
+        done
     fi
     echo ""
 
@@ -1624,18 +1660,19 @@ collect_choices() {
 
     # Auto-detect already-installed tools so re-runs maintain them
     # even if the user skips the optional selection prompt.
-    command -v i3        &>/dev/null && OPT_WITH_I3=true
-    command -v nvim      &>/dev/null && OPT_WITH_NEOVIM=true
-    command -v emacs     &>/dev/null && OPT_WITH_EMACS=true
-    command -v tmux      &>/dev/null && OPT_WITH_TMUX=true
-    command -v alacritty &>/dev/null && OPT_WITH_ALACRITTY=true
-    command -v kitty     &>/dev/null && OPT_WITH_KITTY=true
+    command -v i3           &>/dev/null && OPT_WITH_I3=true
+    command -v xfce4-session &>/dev/null && OPT_WITH_XFCE=true
+    command -v nvim         &>/dev/null && OPT_WITH_NEOVIM=true
+    command -v emacs        &>/dev/null && OPT_WITH_EMACS=true
+    command -v tmux         &>/dev/null && OPT_WITH_TMUX=true
+    command -v alacritty    &>/dev/null && OPT_WITH_ALACRITTY=true
+    command -v kitty        &>/dev/null && OPT_WITH_KITTY=true
 
-    # 3. Remove lightdm (only relevant with i3)
-    if [[ "$OPT_WITH_I3" == true ]]; then
+    # 3. Remove lightdm (only relevant with i3-only — not with Xfce or both)
+    if [[ "$OPT_WITH_I3" == true && "$OPT_WITH_XFCE" != true ]]; then
         if dpkg -s lightdm &>/dev/null; then
             info "--- Display Manager ---"
-            info "lightdm is installed. This setup uses console login → startx → i3."
+            info "lightdm is installed. i3-only setup uses console login → startx."
             if ask_yes_no "Remove lightdm and lightdm-gtk-greeter?"; then
                 OPT_REMOVE_LIGHTDM=true
             else
@@ -1666,7 +1703,8 @@ collect_choices() {
     # -- Summary of choices --
     echo ""
     info "--- Selection Summary ---"
-    _choice_line "i3 desktop"  "$OPT_WITH_I3"
+    _choice_line "i3"          "$OPT_WITH_I3"
+    _choice_line "Xfce4"       "$OPT_WITH_XFCE"
     _choice_line "Alacritty"   "$OPT_WITH_ALACRITTY"
     _choice_line "Kitty"       "$OPT_WITH_KITTY"
     _choice_line "Tmux"        "$OPT_WITH_TMUX"
@@ -1772,10 +1810,15 @@ main() {
     install_missing_packages "${BASE_PACKAGES[@]}"
     echo ""
 
-    # 2. i3 desktop packages (conditional)
+    # 2. DE/WM-specific packages (conditional)
     if [[ "$OPT_WITH_I3" == true ]]; then
-        info "--- i3 Desktop Packages ---"
-        install_missing_packages "${I3_DESKTOP[@]}" "${APPEARANCE[@]}"
+        info "--- i3 Packages ---"
+        install_missing_packages "${I3_PACKAGES[@]}"
+        echo ""
+    fi
+    if [[ "$OPT_WITH_XFCE" == true ]]; then
+        info "--- Xfce4 Packages ---"
+        install_missing_packages "${XFCE_PACKAGES[@]}"
         echo ""
     fi
 
@@ -1876,6 +1919,8 @@ main() {
     info "--- Brave Policy ---"
     install_brave_policy
     echo ""
+
+    # 13. Doom Emacs (needs dotfiles for ~/.config/doom/, restarts daemon)
     if [[ "$OPT_WITH_EMACS" == true ]]; then
         info "--- Doom Emacs ---"
         install_doom_emacs
@@ -1908,9 +1953,9 @@ main() {
     if [[ "$OPT_WITH_I3" == true ]]; then
         echo "  • If this is a fresh install, reboot to use console login → startx → i3"
         echo "  • Verify i3 is the default: ${BOLD}sudo update-alternatives --config x-session-manager${NC}"
-        echo "  • Set GTK theme/icons/fonts: ${BOLD}lxappearance${NC}"
-        echo "  • Adjust compositor effects: ${BOLD}picom-conf${NC}"
     fi
+    echo "  • Set GTK theme/icons/fonts: ${BOLD}lxappearance${NC}"
+    echo "  • Adjust compositor effects: ${BOLD}picom-conf${NC}"
     if [[ "$OPT_WITH_TMUX" == true ]]; then
         echo "  • Install tmux plugins (in a tmux session): ${BOLD}prefix + I${NC}"
     fi
