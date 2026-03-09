@@ -1237,12 +1237,9 @@ _build_stow_conflict_paths() {
         # check the top-level directory — if the whole dir is a real
         # dir with non-symlink content, it's a conflict.
         # Also check the file itself for top-level dotfiles (.bashrc, etc.).
+        # f1-2 gives: .config/nvim, .tmux/plugins, etc.
         local top_dir
         top_dir=$(echo "$rel_path" | cut -d'/' -f1-2)
-        # For .config/X paths, the meaningful unit is .config/X
-        if [[ "$rel_path" == .config/* ]]; then
-            top_dir=$(echo "$rel_path" | cut -d'/' -f1-3)
-        fi
 
         local target_dir="${HOME}/${top_dir}"
 
