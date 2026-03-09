@@ -174,6 +174,7 @@ ${BOLD}Post-install checklist (all environments):${NC}
   • If Tmux was selected, install plugins (in a tmux session): ${BOLD}prefix + I${NC}
   • Check Julia: ${BOLD}juliaup status${NC}
   • If Emacs was selected: ${BOLD}systemctl --user status emacs${NC}
+  • If Brave was selected: verify policies at ${BOLD}brave://policy${NC}
 
 EOF
 }
@@ -736,6 +737,49 @@ install_treesitter_cli() {
     info "Installing tree-sitter-cli globally via npm..."
     sudo npm install -g tree-sitter-cli
     ok "tree-sitter-cli installed."
+}
+
+# -- Brave browser policy -----------------------------------------------------
+# Deploys managed policy from dotfiles to /etc/brave/policies/managed/.
+# Brave reads this at startup — policies appear at brave://policy.
+# Source lives in the dotfiles repo at .config/brave/settings.json
+# so it's version-controlled, but the target is a system path (needs sudo).
+
+install_brave_policy() {
+    local src="${DOTFILES_DIR}/.config/brave/settings.json"
+    local dest_dir="/etc/brave/policies/managed"
+    local dest="${dest_dir}/settings.json"
+
+    if ! command -v brave-browser &>/dev/null; then
+        return
+    fi
+
+    if [[ ! -f "$src" ]]; then
+        warn "Brave policy source not found at ${src}, skipping."
+        return
+    fi
+
+    # Validate JSON before deploying
+    if command -v python3 &>/dev/null; then
+        if ! python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$src" 2>/dev/null; then
+            err "Invalid JSON in ${src} — fix before deploying."
+            return
+        fi
+    fi
+
+    # Skip if already deployed and identical
+    if [[ -f "$dest" ]] && cmp -s "$src" "$dest"; then
+        ok "Brave policy already up to date."
+        return
+    fi
+
+    info "Installing Brave policy..."
+    sudo mkdir -p "$dest_dir"
+    sudo cp "$src" "$dest"
+    sudo chmod 644 "$dest"
+    ok "Brave policy installed to ${dest}."
+    info "Verify at: brave://policy"
+    warn "GTK theme and NTP layout must be set manually in brave://settings"
 }
 
 # -- Nerd Fonts from GitHub releases ------------------------------------------
@@ -1828,7 +1872,10 @@ main() {
     deploy_dotfiles
     echo ""
 
-    # 12. Doom Emacs (needs dotfiles for ~/.config/doom/, restarts daemon)
+    # 12. Brave browser policy (needs dotfiles for .config/brave/settings.json)
+    info "--- Brave Policy ---"
+    install_brave_policy
+    echo ""
     if [[ "$OPT_WITH_EMACS" == true ]]; then
         info "--- Doom Emacs ---"
         install_doom_emacs
@@ -1870,6 +1917,9 @@ main() {
     echo "  • Check Julia: ${BOLD}juliaup status${NC}"
     if [[ "$OPT_WITH_EMACS" == true ]]; then
         echo "  • Emacs daemon: ${BOLD}systemctl --user status emacs${NC}"
+    fi
+    if command -v brave-browser &>/dev/null; then
+        echo "  • Verify Brave policies: ${BOLD}brave://policy${NC}"
     fi
     echo "  • Run ${BOLD}./setup-debian13.sh${NC} for all available options"
     echo ""
