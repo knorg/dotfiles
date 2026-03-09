@@ -62,3 +62,7 @@
 
 (package! ef-themes)
 (package! doric-themes)
+
+(package! org-modern)
+(package! olivetti)
+(package! mixed-pitch)

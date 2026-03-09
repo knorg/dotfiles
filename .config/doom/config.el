@@ -203,8 +203,8 @@ Also switches GTK theme via config files and xsettingsd."
   (add-hook 'julia-mode-hook
             (lambda ()
               (font-lock-add-keywords nil
-                '(("\\<\\([a-zA-Z_][a-zA-Z0-9_!]*\\)\\.?(" 1 'font-lock-function-call-face prepend))
-                'append)
+                                      '(("\\<\\([a-zA-Z_][a-zA-Z0-9_!]*\\)\\.?(" 1 'font-lock-function-call-face prepend))
+                                      'append)
               (font-lock-flush))
             'append))
 
@@ -237,6 +237,9 @@ Also switches GTK theme via config files and xsettingsd."
 (after! org
   ;; Scan both org/ and Denote notes for agenda items
   (setq org-agenda-files '("~/org/" "~/Notes/"))
+
+  (custom-set-faces!
+    '(org-table :inherit fixed-pitch))
 
   ;; TODO workflow states
   (setq org-todo-keywords
@@ -271,7 +274,7 @@ Also switches GTK theme via config files and xsettingsd."
     :size 0.4
     :select t
     :quit nil
-    :ttl 0))
+    :ttl 0)
   (set-popup-rule! "^\\*doom:vterm-popup"
     :side 'right
     :size 0.4
@@ -283,4 +286,67 @@ Also switches GTK theme via config files and xsettingsd."
   (unless (member "Symbols Nerd Font Mono" (font-family-list))
     (nerd-icons-install-fonts t)))
 
+;; ── Polished org/writing display ──────────────────────────────
 
+(use-package! org-modern
+  :hook (org-mode . org-modern-mode)
+  :config
+  (setq org-modern-star '("◉" "○" "◈" "◇" "▸")
+        org-modern-hide-stars nil          ; keep indentation visible
+        org-modern-table t
+        org-modern-list '((?- . "•") (?+ . "◦"))
+        org-modern-checkbox '((?X . "☑") (?- . "☐") (?\s . "☐"))
+        org-modern-timestamp t
+        org-modern-tag t
+        org-modern-todo t))
+
+;; Also enable in agenda buffers
+(add-hook 'org-agenda-finalize-hook #'org-modern-agenda)
+
+(use-package! olivetti
+  :hook ((org-mode markdown-mode) . olivetti-mode)
+  :config
+  (setq olivetti-body-width 95))          ; columns of text to show
+
+(use-package! mixed-pitch
+  :hook ((org-mode markdown-mode) . mixed-pitch-mode)
+  :config
+  (setq mixed-pitch-set-height nil)      ; inherit height from doom-font
+  ;; Keep tables and structured content in monospace
+  (dolist (face '(org-table
+                  org-column
+                  org-column-title
+                  org-modern-tag
+                  org-modern-statistics
+                  org-formula
+                  org-special-keyword
+                  org-property-value
+                  org-drawer
+                  org-meta-line
+                  org-document-info-keyword))
+    (add-to-list 'mixed-pitch-fixed-pitch-faces face)))
+
+(map! :leader
+      (:prefix ("t" . "toggle")
+       :desc "Olivetti mode"    "o" #'olivetti-mode
+       :desc "Org modern"       "m" #'org-modern-mode
+       :desc "Mixed pitch"      "p" #'mixed-pitch-mode))
+
+(add-hook 'org-mode-hook (lambda () (display-line-numbers-mode -1)))
+(add-hook 'markdown-mode-hook (lambda () (display-line-numbers-mode -1)))
+
+;; (setq doom-variable-pitch-font (font-spec :family "Noto Sans" :size 14))
+
+(defun my/org-align-all-tables ()
+  "Align all tables in the current org buffer."
+  (interactive)
+  (save-excursion
+    (goto-char (point-min))
+    (while (re-search-forward org-table-any-line-regexp nil t)
+      (org-table-align)
+      (org-table-end))))
+
+(map! :after org
+      :map org-mode-map
+      :localleader
+      :desc "Align all tables" "z" #'my/org-align-all-tables)
