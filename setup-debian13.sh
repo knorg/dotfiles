@@ -1613,41 +1613,29 @@ collect_choices() {
     info "--- Desktop Environment ---"
     echo ""
 
-    # Auto-detect already-installed DEs
-    local i3_installed=false xfce_installed=false
-    command -v i3    &>/dev/null && i3_installed=true
-    command -v xfce4-session &>/dev/null && xfce_installed=true
+    # Show installed status but always let the user choose
+    local i3_status="" xfce_status=""
+    command -v i3            &>/dev/null && i3_status=" ${GREEN}(installed)${NC}"
+    command -v xfce4-session &>/dev/null && xfce_status=" ${GREEN}(installed)${NC}"
 
-    if [[ "$i3_installed" == true && "$xfce_installed" == true ]]; then
-        OPT_WITH_I3=true
-        OPT_WITH_XFCE=true
-        ok "i3 and Xfce4 already installed — will maintain both."
-    elif [[ "$i3_installed" == true ]]; then
-        OPT_WITH_I3=true
-        ok "i3 already installed — will maintain."
-    elif [[ "$xfce_installed" == true ]]; then
-        OPT_WITH_XFCE=true
-        ok "Xfce4 already installed — will maintain."
-    else
-        echo -e "    ${BOLD}1)${NC}  i3 (tiling WM, console login → startx)"
-        echo -e "    ${BOLD}2)${NC}  Xfce4 (full desktop — required for Citrix VDI)"
-        echo -e "    ${BOLD}3)${NC}  Both (i3 + Xfce4)"
-        echo -e "    ${BOLD}0)${NC}  None — terminal tools and editors only"
-        echo ""
+    echo -e "    ${BOLD}1)${NC}  i3 (tiling WM, console login → startx)${i3_status}"
+    echo -e "    ${BOLD}2)${NC}  Xfce4 (full desktop — required for Citrix VDI)${xfce_status}"
+    echo -e "    ${BOLD}3)${NC}  Both (i3 + Xfce4)"
+    echo -e "    ${BOLD}0)${NC}  None — terminal tools and editors only"
+    echo ""
 
-        local de_reply
-        while true; do
-            read -rp "$(echo -e "${YELLOW}[????]${NC}  Select desktop environment [0-3]: ")" de_reply
-            case "$de_reply" in
-                0) ok "Skipping DE — will install terminal tools and editors only." ; break ;;
-                1) OPT_WITH_I3=true   ; ok "i3 selected." ; break ;;
-                2) OPT_WITH_XFCE=true ; ok "Xfce4 selected." ; break ;;
-                3) OPT_WITH_I3=true ; OPT_WITH_XFCE=true
-                   ok "Both i3 and Xfce4 selected." ; break ;;
-                *) echo "  Please enter 0, 1, 2, or 3." ;;
-            esac
-        done
-    fi
+    local de_reply
+    while true; do
+        read -rp "$(echo -e "${YELLOW}[????]${NC}  Select desktop environment [0-3]: ")" de_reply
+        case "$de_reply" in
+            0) ok "Skipping DE — will install terminal tools and editors only." ; break ;;
+            1) OPT_WITH_I3=true   ; ok "i3 selected." ; break ;;
+            2) OPT_WITH_XFCE=true ; ok "Xfce4 selected." ; break ;;
+            3) OPT_WITH_I3=true ; OPT_WITH_XFCE=true
+               ok "Both i3 and Xfce4 selected." ; break ;;
+            *) echo "  Please enter 0, 1, 2, or 3." ;;
+        esac
+    done
     echo ""
 
     # 2. Optional packages (interactive menu — selection only, no install yet)
@@ -1657,8 +1645,7 @@ collect_choices() {
 
     # Auto-detect already-installed tools so re-runs maintain them
     # even if the user skips the optional selection prompt.
-    command -v i3           &>/dev/null && OPT_WITH_I3=true
-    command -v xfce4-session &>/dev/null && OPT_WITH_XFCE=true
+    # Note: i3/xfce are NOT auto-detected here — the DE choice is explicit.
     command -v nvim         &>/dev/null && OPT_WITH_NEOVIM=true
     command -v emacs        &>/dev/null && OPT_WITH_EMACS=true
     command -v tmux         &>/dev/null && OPT_WITH_TMUX=true
