@@ -55,23 +55,23 @@ Your modifier key is =Super= (the Windows key), referred to as =$mod= in the con
 
 ** Layout
 
-| Key            | Action                                |
-|----------------+---------------------------------------|
-| =$mod + e=     | Toggle split (default tiling layout)  |
-| =$mod + s=     | Stacking layout (tabs on top)         |
-| =$mod + w=     | Tabbed layout                         |
-| =$mod + v=     | Split vertically (next window below)  |
-| =$mod + b=     | Split horizontally (next window right)|
+| Key        | Action                                 |
+|------------+----------------------------------------|
+| =$mod + e= | Toggle split (default tiling layout)   |
+| =$mod + s= | Stacking layout (tabs on top)          |
+| =$mod + w= | Tabbed layout                          |
+| =$mod + v= | Split vertically (next window below)   |
+| =$mod + b= | Split horizontally (next window right) |
 
 When you open a new window, it splits the current container. Press =$mod + v=
 *before* opening the next window to control the split direction.
 
 ** Workspaces
 
-| Key                    | Action                          |
-|------------------------+---------------------------------|
-| =$mod + 1= through =0= | Switch to workspace 1–10        |
-| =$mod + Shift + 1–0=   | Move window to workspace 1–10   |
+| Key                    | Action                        |
+|------------------------+-------------------------------|
+| =$mod + 1= through =0= | Switch to workspace 1–10      |
+| =$mod + Shift + 1–0=   | Move window to workspace 1–10 |
 
 Workspaces are created on demand. If you switch to workspace 5 and
 nothing is there, it is created empty. Empty workspaces disappear
@@ -81,12 +81,12 @@ when you leave them.
 
 Press =$mod + r= to enter resize mode. The status bar shows =resize=.
 
-| Key       | Action                |
-|-----------+-----------------------|
-| =h / l=   | Shrink / grow width   |
-| =j / k=   | Shrink / grow height  |
-| =Return=  | Exit resize mode      |
-| =Escape=  | Exit resize mode      |
+| Key      | Action               |
+|----------+----------------------|
+| =h / l=  | Shrink / grow width  |
+| =j / k=  | Shrink / grow height |
+| =Return= | Exit resize mode     |
+| =Escape= | Exit resize mode     |
 
 ** Gaps (if configured)
 
@@ -154,20 +154,20 @@ emacs                               # Runs in foreground (not daemon)
 Nearly every command starts with =SPC= (spacebar). Doom shows a popup
 (which-key) after a short delay listing available next keys:
 
-| Prefix      | Category               |
-|-------------+------------------------|
-| =SPC=       | General leader         |
-| =SPC f=     | File operations        |
-| =SPC b=     | Buffer operations      |
-| =SPC w=     | Window management      |
-| =SPC p=     | Project operations     |
-| =SPC s=     | Search                 |
-| =SPC c=     | Code (LSP) actions     |
-| =SPC g=     | Git (Magit)            |
-| =SPC o=     | Open (REPL, term, etc) |
-| =SPC t=     | Toggle settings        |
-| =SPC n=     | Notes (Denote, org)    |
-| =SPC h=     | Help                   |
+| Prefix  | Category               |
+|---------+------------------------|
+| =SPC=   | General leader         |
+| =SPC f= | File operations        |
+| =SPC b= | Buffer operations      |
+| =SPC w= | Window management      |
+| =SPC p= | Project operations     |
+| =SPC s= | Search                 |
+| =SPC c= | Code (LSP) actions     |
+| =SPC g= | Git (Magit)            |
+| =SPC o= | Open (REPL, term, etc) |
+| =SPC t= | Toggle settings        |
+| =SPC n= | Notes (Denote, org)    |
+| =SPC h= | Help                   |
 
 *If you ever get lost*, just press =SPC= and wait — the popup tells you
 everything available. Other ways to discover keybindings:
@@ -249,33 +249,33 @@ A *buffer* is an open file (or scratch area) in memory. A *window* is
 a visible pane showing a buffer. You can have many buffers but only see
 a few windows at a time.
 
-| Key         | Action                                    |
-|-------------+-------------------------------------------|
-| =SPC f f=   | Find/open file (fuzzy search)             |
-| =SPC f r=   | Recent files                              |
-| =SPC f s=   | Save current file                         |
-| =SPC .=     | Browse files (opens Dired if on a dir)    |
-| =SPC b b=   | Switch buffer (list of open files)        |
-| =SPC b k=   | Kill (close) current buffer               |
-| =SPC b p=   | Previous buffer                           |
-| =SPC b n=   | Next buffer                               |
-| =SPC w v=   | Split window vertically (side by side)    |
-| =SPC w s=   | Split window horizontally (top/bottom)    |
-| =SPC w w=   | Cycle focus between windows               |
-| =SPC w h/j/k/l= | Focus window left/down/up/right      |
-| =SPC w q=   | Close current window (buffer stays open)  |
-| =SPC w ==   | Balance window sizes                      |
+| Key             | Action                                   |
+|-----------------+------------------------------------------|
+| =SPC f f=       | Find/open file (fuzzy search)            |
+| =SPC f r=       | Recent files                             |
+| =SPC f s=       | Save current file                        |
+| =SPC .=         | Browse files (opens Dired if on a dir)   |
+| =SPC b b=       | Switch buffer (list of open files)       |
+| =SPC b k=       | Kill (close) current buffer              |
+| =SPC b p=       | Previous buffer                          |
+| =SPC b n=       | Next buffer                              |
+| =SPC w v=       | Split window vertically (side by side)   |
+| =SPC w s=       | Split window horizontally (top/bottom)   |
+| =SPC w w=       | Cycle focus between windows              |
+| =SPC w h/j/k/l= | Focus window left/down/up/right          |
+| =SPC w q=       | Close current window (buffer stays open) |
+| =SPC w ==       | Balance window sizes                     |
 
 *** Projects
 
 Doom auto-detects projects (any directory with =.git=):
 
-| Key         | Action                              |
-|-------------+-------------------------------------|
-| =SPC p p=   | Switch project                      |
-| =SPC p f=   | Find file in current project        |
-| =SPC /=     | Search text in project (ripgrep)    |
-| =SPC s i=   | Search symbols in current buffer    |
+| Key       | Action                           |
+|-----------+----------------------------------|
+| =SPC p p= | Switch project                   |
+| =SPC p f= | Find file in current project     |
+| =SPC /=   | Search text in project (ripgrep) |
+| =SPC s i= | Search symbols in current buffer |
 
 *** Workspaces
 
@@ -283,15 +283,15 @@ Your config enables the =workspaces= module, which gives you
 persistent tabs — each workspace can hold a different set of buffers
 and window layouts, like virtual desktops within Emacs.
 
-| Key             | Action                              |
-|-----------------+-------------------------------------|
-| =SPC TAB n=     | New workspace                       |
-| =SPC TAB TAB=   | Switch to workspace by name         |
-| =SPC TAB 1–9=   | Switch to workspace by number       |
-| =SPC TAB d=     | Delete current workspace            |
-| =SPC TAB r=     | Rename current workspace            |
-| =SPC TAB ]=     | Next workspace                      |
-| =SPC TAB [=     | Previous workspace                  |
+| Key           | Action                        |
+|---------------+-------------------------------|
+| =SPC TAB n=   | New workspace                 |
+| =SPC TAB TAB= | Switch to workspace by name   |
+| =SPC TAB 1–9= | Switch to workspace by number |
+| =SPC TAB d=   | Delete current workspace      |
+| =SPC TAB r=   | Rename current workspace      |
+| =SPC TAB ]=   | Next workspace                |
+| =SPC TAB [=   | Previous workspace            |
 
 A common pattern: one workspace per project (Magit + source files +
 REPL), switch between them with =SPC TAB TAB=.
@@ -304,26 +304,26 @@ open Dired on that file's parent directory.
 
 *** Navigating
 
-| Key   | Action                               |
-|-------+--------------------------------------|
-| =j/k= | Move up/down through file list       |
-| =RET= | Open file or enter directory          |
-| =-=   | Go up to parent directory             |
-| =g r= | Refresh directory listing             |
-| =(=   | Toggle details (file size, dates)      |
+| Key   | Action                            |
+|-------+-----------------------------------|
+| =j/k= | Move up/down through file list    |
+| =RET= | Open file or enter directory      |
+| =-=   | Go up to parent directory         |
+| =g r= | Refresh directory listing         |
+| =(=   | Toggle details (file size, dates) |
 
 *** File operations
 
-| Key   | Action                               |
-|-------+--------------------------------------|
-| =d=   | Mark file for deletion                |
-| =u=   | Unmark one file                       |
-| =U=   | Unmark all marks                      |
-| =x=   | Execute marked deletions (confirms)   |
-| =m=   | Mark file for bulk operation          |
-| =R=   | Rename/Move file(s)                   |
-| =C=   | Copy file(s)                          |
-| =+=   | Create new directory                  |
+| Key | Action                              |
+|-----+-------------------------------------|
+| =d= | Mark file for deletion              |
+| =u= | Unmark one file                     |
+| =U= | Unmark all marks                    |
+| =x= | Execute marked deletions (confirms) |
+| =m= | Mark file for bulk operation        |
+| =R= | Rename/Move file(s)                 |
+| =C= | Copy file(s)                        |
+| =+= | Create new directory                |
 
 To speed up confirmation, add to =config.el=:
 
@@ -351,13 +351,13 @@ The same workflow works with =C= for copying instead of moving.
 Doom uses evil-mode, which gives you Vim-style modal editing. You are
 always in one of these modes:
 
-| Mode       | How to enter     | What it does                          |
-|------------+------------------+---------------------------------------|
-| Normal     | =Escape=         | Navigate and execute commands         |
-| Insert     | =i=              | Type text at cursor position          |
-| Visual     | =v=              | Select text character-by-character    |
-| V-Line     | =V=              | Select entire lines                   |
-| V-Block    | =C-v=            | Select a rectangular block            |
+| Mode    | How to enter | What it does                       |
+|---------+--------------+------------------------------------|
+| Normal  | =Escape=     | Navigate and execute commands      |
+| Insert  | =i=          | Type text at cursor position       |
+| Visual  | =v=          | Select text character-by-character |
+| V-Line  | =V=          | Select entire lines                |
+| V-Block | =C-v=        | Select a rectangular block         |
 
 The mode indicator appears in the cursor shape and the modeline at the
 bottom. Always press =Escape= to return to Normal mode before using
@@ -368,38 +368,38 @@ any =SPC= commands.
 There are several ways to start typing, each positions the cursor
 differently:
 
-| Key   | Action                                    |
-|-------+-------------------------------------------|
-| =i=   | Insert before cursor                      |
-| =a=   | Insert after cursor                       |
-| =I=   | Insert at beginning of line               |
-| =A=   | Insert at end of line                     |
-| =o=   | Open new line below and enter Insert mode |
-| =O=   | Open new line above and enter Insert mode |
-| =s=   | Delete character and enter Insert mode    |
-| =S=   | Delete entire line and enter Insert mode  |
+| Key | Action                                    |
+|-----+-------------------------------------------|
+| =i= | Insert before cursor                      |
+| =a= | Insert after cursor                       |
+| =I= | Insert at beginning of line               |
+| =A= | Insert at end of line                     |
+| =o= | Open new line below and enter Insert mode |
+| =O= | Open new line above and enter Insert mode |
+| =s= | Delete character and enter Insert mode    |
+| =S= | Delete entire line and enter Insert mode  |
 
 *** Essential editing commands (Normal mode)
 
-| Key       | Action                                    |
-|-----------+-------------------------------------------|
-| =x=       | Delete character under cursor             |
-| =dd=      | Delete entire line                        |
-| =D=       | Delete from cursor to end of line         |
-| =cc=      | Change entire line (delete + Insert mode) |
-| =C=       | Change from cursor to end of line         |
-| =yy=      | Yank (copy) entire line                   |
-| =p=       | Paste after cursor                        |
-| =P=       | Paste before cursor                       |
-| =u=       | Undo                                      |
-| =C-r=     | Redo                                      |
-| =.=       | Repeat last command                       |
-| =~=       | Toggle case of character under cursor     |
-| =J=       | Join current line with line below         |
-| =>=>=     | Indent line                               |
-| =<<=      | Dedent line                               |
-| =gcc=     | Comment/uncomment current line            |
-| =gc=      | Comment/uncomment (with motion)           |
+| Key   | Action                                    |
+|-------+-------------------------------------------|
+| =x=   | Delete character under cursor             |
+| =dd=  | Delete entire line                        |
+| =D=   | Delete from cursor to end of line         |
+| =cc=  | Change entire line (delete + Insert mode) |
+| =C=   | Change from cursor to end of line         |
+| =yy=  | Yank (copy) entire line                   |
+| =p=   | Paste after cursor                        |
+| =P=   | Paste before cursor                       |
+| =u=   | Undo                                      |
+| =C-r= | Redo                                      |
+| =.=   | Repeat last command                       |
+| =~=   | Toggle case of character under cursor     |
+| =J=   | Join current line with line below         |
+| =>=>= | Indent line                               |
+| =<<=  | Dedent line                               |
+| =gcc= | Comment/uncomment current line            |
+| =gc=  | Comment/uncomment (with motion)           |
 
 *** The verb-noun grammar
 
@@ -409,30 +409,30 @@ combine them freely.
 
 *Verbs* (what to do):
 
-| Key | Verb   | Meaning                              |
-|-----+--------+--------------------------------------|
-| =d= | Delete | Remove text and save to register     |
-| =c= | Change | Delete text and enter Insert mode     |
-| =y= | Yank   | Copy text to register                |
-| =>= | Indent | Shift text right                     |
-| =<= | Dedent | Shift text left                      |
+| Key | Verb   | Meaning                           |
+|-----+--------+-----------------------------------|
+| =d= | Delete | Remove text and save to register  |
+| =c= | Change | Delete text and enter Insert mode |
+| =y= | Yank   | Copy text to register             |
+| =>= | Indent | Shift text right                  |
+| =<= | Dedent | Shift text left                   |
 
 *Nouns* (what to act on — also called text objects and motions):
 
-| Key    | Noun             | Meaning                       |
-|--------+------------------+-------------------------------|
-| =w=    | Word             | From cursor to next word      |
-| =b=    | Back             | From cursor to previous word  |
-| =iw=   | Inner word       | The word under cursor         |
-| =aw=   | A word           | Word under cursor + surrounding space |
-| =i"=   | Inside quotes    | Text between nearest ="= pair |
-| =i(=   | Inside parens    | Text between nearest =()=     |
-| =i{=   | Inside braces    | Text between nearest ={}=     |
-| =it=   | Inside tag       | Text between HTML/XML tags    |
-| =ip=   | Inner paragraph  | The current paragraph         |
-| =gg=   | To top           | From cursor to top of file    |
-| =G=    | To bottom        | From cursor to bottom of file |
-| =3j=   | 3 lines down     | Three lines downward          |
+| Key  | Noun            | Meaning                               |
+|------+-----------------+---------------------------------------|
+| =w=  | Word            | From cursor to next word              |
+| =b=  | Back            | From cursor to previous word          |
+| =iw= | Inner word      | The word under cursor                 |
+| =aw= | A word          | Word under cursor + surrounding space |
+| =i"= | Inside quotes   | Text between nearest ="= pair         |
+| =i(= | Inside parens   | Text between nearest =()=             |
+| =i{= | Inside braces   | Text between nearest ={}=             |
+| =it= | Inside tag      | Text between HTML/XML tags            |
+| =ip= | Inner paragraph | The current paragraph                 |
+| =gg= | To top          | From cursor to top of file            |
+| =G=  | To bottom       | From cursor to bottom of file         |
+| =3j= | 3 lines down    | Three lines downward                  |
 
 *Examples:*
 
@@ -450,17 +450,17 @@ down 5 lines.
 
 *** Search and replace
 
-| Key              | Action                                 |
-|------------------+----------------------------------------|
-| =/pattern=       | Search forward                         |
-| =?pattern=       | Search backward                        |
-| =n= / =N=        | Next / previous match                  |
-| =*=              | Search for word under cursor           |
-| =SPC s s=        | Search in current buffer (vertico)     |
-| =SPC /=          | Search in project (ripgrep)            |
-| =SPC s p=        | Search in project (alternative binding)|
-| =:%s/old/new/g=  | Replace all in file (command mode)     |
-| =:%s/old/new/gc= | Replace all, asking for each match     |
+| Key              | Action                                  |
+|------------------+-----------------------------------------|
+| =/pattern=       | Search forward                          |
+| =?pattern=       | Search backward                         |
+| =n= / =N=        | Next / previous match                   |
+| =*=              | Search for word under cursor            |
+| =SPC s s=        | Search in current buffer (vertico)      |
+| =SPC /=          | Search in project (ripgrep)             |
+| =SPC s p=        | Search in project (alternative binding) |
+| =:%s/old/new/g=  | Replace all in file (command mode)      |
+| =:%s/old/new/gc= | Replace all, asking for each match      |
 
 For the replace commands, press =:= first to enter command mode, then
 type the pattern. The =c= flag at the end makes it interactive — you
@@ -468,12 +468,12 @@ can press =y= to replace, =n= to skip, or =a= to replace all remaining.
 
 *** Visual mode selections
 
-| Key     | Action                                  |
-|---------+-----------------------------------------|
-| =v=     | Start visual (character) selection      |
-| =V=     | Start visual line selection              |
-| =C-v=   | Start visual block (column) selection   |
-| =gv=    | Reselect last visual selection          |
+| Key   | Action                                |
+|-------+---------------------------------------|
+| =v=   | Start visual (character) selection    |
+| =V=   | Start visual line selection           |
+| =C-v= | Start visual block (column) selection |
+| =gv=  | Reselect last visual selection        |
 
 Once in visual mode, move the cursor to expand the selection, then
 apply a verb: =d= to delete, =y= to yank, =>= to indent, =gc= to
@@ -491,11 +491,11 @@ Your config customizes Magit:
 
 *** Opening Magit
 
-| Key       | Action                     |
-|-----------+----------------------------|
+| Key       | Action                       |
+|-----------+------------------------------|
 | =SPC g g= | Open Magit status (main hub) |
-| =SPC g B= | Blame current file         |
-| =SPC g l= | Git log                    |
+| =SPC g B= | Blame current file           |
+| =SPC g l= | Git log                      |
 
 *** The status buffer
 
@@ -503,32 +503,32 @@ After =SPC g g=, you see sections for unstaged changes, staged changes,
 recent commits, and branch info. Navigate with =j= / =k= and press
 =TAB= to expand/collapse sections.
 
-| Key         | Action                                 |
-|-------------+----------------------------------------|
-| =s=         | Stage file or hunk under cursor        |
-| =u=         | Unstage file or hunk                   |
-| =TAB=       | Expand/collapse section or hunk        |
-| =?=         | Show all available commands (always works) |
-| =q=         | Close current Magit buffer             |
-| =g=         | Refresh status                         |
+| Key   | Action                                     |
+|-------+--------------------------------------------|
+| =s=   | Stage file or hunk under cursor            |
+| =u=   | Unstage file or hunk                       |
+| =TAB= | Expand/collapse section or hunk            |
+| =?=   | Show all available commands (always works) |
+| =q=   | Close current Magit buffer                 |
+| =g=   | Refresh status                             |
 
 *** Committing
 
-| Key       | Action                                       |
-|-----------+----------------------------------------------|
-| =c c=     | Start a new commit (opens message buffer)    |
-| =c a=     | Amend last commit (edit message + add staged) |
-| =c e=     | Extend last commit (add staged, keep message) |
-| =c w=     | Reword last commit message only              |
+| Key   | Action                                        |
+|-------+-----------------------------------------------|
+| =c c= | Start a new commit (opens message buffer)     |
+| =c a= | Amend last commit (edit message + add staged) |
+| =c e= | Extend last commit (add staged, keep message) |
+| =c w= | Reword last commit message only               |
 
 In the commit message buffer:
 
-| Key         | Action              |
-|-------------+---------------------|
-| =C-c C-c=   | Confirm commit     |
-| =C-c C-k=   | Abort commit       |
-| =, ,=       | Confirm (Doom shortcut) |
-| =, k=       | Abort (Doom shortcut)   |
+| Key         | Action                                 |
+|-------------+----------------------------------------|
+| =C-c C-c=   | Confirm commit                         |
+| =C-c C-k=   | Abort commit                           |
+| =, ,=       | Confirm (Doom shortcut)                |
+| =, k=       | Abort (Doom shortcut)                  |
 | =M-p / M-n= | Cycle through previous commit messages |
 
 The first line is the subject (keep under 50 characters). Leave a blank
@@ -543,30 +543,30 @@ changes across multiple precise commits.
 
 *** Pushing and pulling
 
-| Key   | Action                    |
-|-------+---------------------------|
-| =P p= | Push to remote            |
-| =F p= | Pull (fetch + merge)      |
-| =f f= | Fetch only (no merge)     |
+| Key   | Action                |
+|-------+-----------------------|
+| =P p= | Push to remote        |
+| =F p= | Pull (fetch + merge)  |
+| =f f= | Fetch only (no merge) |
 
 *** Branching
 
-| Key   | Action                    |
-|-------+---------------------------|
-| =b b= | Checkout existing branch  |
+| Key   | Action                         |
+|-------+--------------------------------|
+| =b b= | Checkout existing branch       |
 | =b c= | Create and checkout new branch |
-| =b d= | Delete branch             |
+| =b d= | Delete branch                  |
 
 *** Undoing commits (reset)
 
 Move your cursor to the *branch/HEAD line* at the top of the status
 buffer (not on a file), then:
 
-| Command        | Effect                                    |
-|----------------+-------------------------------------------|
-| =X s HEAD~1=   | Soft reset — undo commit, keep staged     |
-| =X m HEAD~1=   | Mixed reset — undo commit, keep unstaged  |
-| =X h HEAD~1=   | Hard reset — undo commit, DELETE changes  |
+| Command      | Effect                                   |
+|--------------+------------------------------------------|
+| =X s HEAD~1= | Soft reset — undo commit, keep staged    |
+| =X m HEAD~1= | Mixed reset — undo commit, keep unstaged |
+| =X h HEAD~1= | Hard reset — undo commit, DELETE changes |
 
 #+BEGIN_QUOTE
 Important: =X= on a *file* means "untrack" — make sure your cursor is
@@ -577,12 +577,12 @@ on the HEAD line before pressing =X= for reset.
 
 Doom remaps the submodule key from lowercase =o= to uppercase =O=:
 
-| Key   | Action                        |
-|-------+-------------------------------|
-| =O a= | Add submodule                 |
-| =O d= | Deinit submodule              |
-| =O u= | Update submodule(s)           |
-| =O f= | Fetch submodule(s)            |
+| Key   | Action              |
+|-------+---------------------|
+| =O a= | Add submodule       |
+| =O d= | Deinit submodule    |
+| =O u= | Update submodule(s) |
+| =O f= | Fetch submodule(s)  |
 
 ** Julia IDE
 
@@ -621,29 +621,29 @@ julia -e 'using LanguageServer'
 
 *** LSP — code intelligence
 
-| Key         | Action                                  |
-|-------------+-----------------------------------------|
-| =K=         | Hover docs for symbol under cursor      |
-| =gd=        | Go to definition                        |
-| =gD=        | Find all references                     |
-| =SPC c a=   | Code actions (quick fixes, imports)     |
-| =SPC c r=   | Rename symbol across project            |
-| =SPC c x=   | Show diagnostics list (flycheck)        |
-| =SPC s i=   | Search symbols in current buffer (imenu)|
-| =] e=       | Jump to next error/warning              |
-| =[ e=       | Jump to previous error/warning          |
+| Key       | Action                                   |
+|-----------+------------------------------------------|
+| =K=       | Hover docs for symbol under cursor       |
+| =gd=      | Go to definition                         |
+| =gD=      | Find all references                      |
+| =SPC c a= | Code actions (quick fixes, imports)      |
+| =SPC c r= | Rename symbol across project             |
+| =SPC c x= | Show diagnostics list (flycheck)         |
+| =SPC s i= | Search symbols in current buffer (imenu) |
+| =] e=     | Jump to next error/warning               |
+| =[ e=     | Jump to previous error/warning           |
 
 *** Completion
 
 Completion triggers automatically as you type (powered by corfu).
 
-| Key       | Action                         |
-|-----------+--------------------------------|
-| (auto)    | Popup appears as you type      |
-| =C-SPC=   | Manually trigger completion    |
-| =C-n=     | Next completion item           |
-| =C-p=     | Previous completion item       |
-| =RET=     | Accept selected completion     |
+| Key     | Action                      |
+|---------+-----------------------------|
+| (auto)  | Popup appears as you type   |
+| =C-SPC= | Manually trigger completion |
+| =C-n=   | Next completion item        |
+| =C-p=   | Previous completion item    |
+| =RET=   | Accept selected completion  |
 
 *** REPL workflow
 
@@ -651,13 +651,13 @@ The Julia REPL uses the =julia-repl= package with a vterm backend
 (configured in your =config.el=). Doom's =(eval +overlay)= module
 provides the send-to-REPL functionality.
 
-| Key       | Action                              |
-|-----------+-------------------------------------|
-| =SPC o r= | Open Julia REPL (vterm)             |
-| =C-c C-c= | Send current line or selection      |
-| =C-c C-b= | Send entire buffer to REPL          |
-| =C-c C-d= | Send current function definition    |
-| =C-c C-z= | Switch between source and REPL      |
+| Key       | Action                           |
+|-----------+----------------------------------|
+| =SPC o r= | Open Julia REPL (vterm)          |
+| =C-c C-c= | Send current line or selection   |
+| =C-c C-b= | Send entire buffer to REPL       |
+| =C-c C-d= | Send current function definition |
+| =C-c C-z= | Switch between source and REPL   |
 
 The REPL runs in a vterm buffer at the bottom. You write code in the
 top buffer and send expressions down to the REPL for evaluation. This
@@ -747,10 +747,10 @@ matter in the org file looks like:
 
 *** Finding and searching notes
 
-| Key         | Action                                     |
-|-------------+--------------------------------------------|
-| =SPC n d o= | Open or create note (fuzzy, live preview)  |
-| =SPC n d g= | Grep across all note *contents*            |
+| Key         | Action                                    |
+|-------------+-------------------------------------------|
+| =SPC n d o= | Open or create note (fuzzy, live preview) |
+| =SPC n d g= | Grep across all note *contents*           |
 
 =SPC n d o= (=denote-open-or-create=) searches your notes by filename
 components (timestamp, title, keywords). If no match is found, it
@@ -767,12 +767,12 @@ all notes.
 
 *** Linking between notes
 
-| Key         | Action                                   |
-|-------------+------------------------------------------|
-| =SPC n d i= | Insert link to an existing note          |
+| Key         | Action                                      |
+|-------------+---------------------------------------------|
+| =SPC n d i= | Insert link to an existing note             |
 | =SPC n d l= | Link or create (insert link, create if new) |
-| =SPC n d b= | Show backlinks (notes linking here)      |
-| =SPC n d B= | Find backlink (select and jump to it)    |
+| =SPC n d b= | Show backlinks (notes linking here)         |
+| =SPC n d B= | Find backlink (select and jump to it)       |
 
 =SPC n d i= (=denote-link=) prompts you to select an existing note
 (fuzzy search) and inserts an org link using the timestamp:
@@ -796,12 +796,12 @@ naturally.
 
 *** Renaming and managing notes
 
-| Key         | Action                                    |
-|-------------+-------------------------------------------|
-| =SPC n d r= | Rename current note (title and keywords)  |
-| =SPC n d k= | Add keywords to current note              |
-| =SPC n d K= | Remove keywords from current note         |
-| =SPC n d s= | Create note in a subdirectory             |
+| Key         | Action                                   |
+|-------------+------------------------------------------|
+| =SPC n d r= | Rename current note (title and keywords) |
+| =SPC n d k= | Add keywords to current note             |
+| =SPC n d K= | Remove keywords from current note        |
+| =SPC n d s= | Create note in a subdirectory            |
 
 =SPC n d r= re-prompts you for title and keywords, then renames the file.
 The timestamp never changes. Links from other notes still work because
@@ -830,19 +830,19 @@ instantly — no friction. You can expand it later or let it stay small.
 
 All keybindings under =SPC n d= as defined in your =config.el=:
 
-| Key         | Action                              |
-|-------------+-------------------------------------|
-| =SPC n d n= | New note                            |
-| =SPC n d o= | Open or create note                 |
-| =SPC n d g= | Grep note contents                  |
-| =SPC n d i= | Insert link to existing note        |
-| =SPC n d l= | Link or create (link, create if new)|
-| =SPC n d b= | Show backlinks to current note      |
-| =SPC n d B= | Find and jump to a backlink         |
-| =SPC n d r= | Rename note (title + keywords)      |
-| =SPC n d k= | Add keywords to note                |
-| =SPC n d K= | Remove keywords from note           |
-| =SPC n d s= | Create note in subdirectory         |
+| Key         | Action                               |
+|-------------+--------------------------------------|
+| =SPC n d n= | New note                             |
+| =SPC n d o= | Open or create note                  |
+| =SPC n d g= | Grep note contents                   |
+| =SPC n d i= | Insert link to existing note         |
+| =SPC n d l= | Link or create (link, create if new) |
+| =SPC n d b= | Show backlinks to current note       |
+| =SPC n d B= | Find and jump to a backlink          |
+| =SPC n d r= | Rename note (title + keywords)       |
+| =SPC n d k= | Add keywords to note                 |
+| =SPC n d K= | Remove keywords from note            |
+| =SPC n d s= | Create note in subdirectory          |
 
 ** Org-mode
 
@@ -861,11 +861,11 @@ more stars (=*=). The number of stars indicates the depth level. You can
 fold and unfold sections to navigate large documents — this is one of
 org-mode's most practical features.
 
-| Key             | Action                              |
-|-----------------+-------------------------------------|
-| =TAB=           | Fold/unfold current heading         |
-| =Shift-TAB=     | Cycle global fold state             |
-| =z a=           | Toggle fold of current subtree (evil) |
+| Key         | Action                                |
+|-------------+---------------------------------------|
+| =TAB=       | Fold/unfold current heading           |
+| =Shift-TAB= | Cycle global fold state               |
+| =z a=       | Toggle fold of current subtree (evil) |
 
 =Shift-TAB= cycles through three states:
 1. *Overview* — only top-level headings visible
@@ -874,28 +874,28 @@ org-mode's most practical features.
 
 *** Creating and moving headlines
 
-| Key             | Action                              |
-|-----------------+-------------------------------------|
-| =M-RET=         | New heading at same level           |
-| =M-Shift-RET=   | New TODO heading at same level      |
-| =M-left=        | Promote heading (fewer stars)       |
-| =M-right=       | Demote heading (more stars)         |
-| =M-up=          | Move heading up (swap with above)   |
-| =M-down=        | Move heading down (swap with below) |
-| =M-Shift-left=  | Promote subtree (heading + children)|
-| =M-Shift-right= | Demote subtree                      |
+| Key             | Action                               |
+|-----------------+--------------------------------------|
+| =M-RET=         | New heading at same level            |
+| =M-Shift-RET=   | New TODO heading at same level       |
+| =M-left=        | Promote heading (fewer stars)        |
+| =M-right=       | Demote heading (more stars)          |
+| =M-up=          | Move heading up (swap with above)    |
+| =M-down=        | Move heading down (swap with below)  |
+| =M-Shift-left=  | Promote subtree (heading + children) |
+| =M-Shift-right= | Demote subtree                       |
 
 *** Formatting
 
-| Syntax             | Result              |
-|--------------------+---------------------|
-| =*bold*=           | *bold*              |
-| =/italic/=         | /italic/            |
-| ==code==           | =code=              |
-| =~verbatim~=       | ~verbatim~          |
-| =+strikethrough+=  | +strikethrough+     |
-| =_underline_=      | _underline_         |
-| =[[url][label]]=   | clickable hyperlink |
+| Syntax            | Result              |
+|-------------------+---------------------|
+| =*bold*=          | *bold*              |
+| =/italic/=        | /italic/            |
+| ==code==          | =code=              |
+| =~verbatim~=      | ~verbatim~          |
+| =+strikethrough+= | +strikethrough+     |
+| =_underline_=     | _underline_         |
+| =[[url][label]]=  | clickable hyperlink |
 
 *** Lists
 
@@ -918,18 +918,18 @@ term.
 Any headline can become a task by adding a TODO keyword at the start.
 Your config defines these states:
 
-| State        | Key | Meaning                           |
-|--------------+-----+-----------------------------------|
-| =TODO=       | =t= | Task to be done                   |
-| =NEXT=       | =n= | Active task, working on it now    |
-| =WAITING=    | =w= | Blocked, waiting on someone/thing |
-| =DONE=       | =d= | Completed (logged with timestamp) |
-| =CANCELLED=  | =c= | No longer relevant                |
+| State       | Key | Meaning                           |
+|-------------+-----+-----------------------------------|
+| =TODO=      | =t= | Task to be done                   |
+| =NEXT=      | =n= | Active task, working on it now    |
+| =WAITING=   | =w= | Blocked, waiting on someone/thing |
+| =DONE=      | =d= | Completed (logged with timestamp) |
+| =CANCELLED= | =c= | No longer relevant                |
 
-| Key           | Action                                   |
-|---------------+------------------------------------------|
-| =SPC m t=     | Cycle TODO state with fast-select keys   |
-| =SPC m T=     | Choose a specific TODO state             |
+| Key       | Action                                 |
+|-----------+----------------------------------------|
+| =SPC m t= | Cycle TODO state with fast-select keys |
+| =SPC m T= | Choose a specific TODO state           |
 
 When you press =SPC m t=, a menu appears with the single-letter keys
 (t/n/w/d/c) for quick selection. When a task is marked =DONE=, a
@@ -940,9 +940,9 @@ When you press =SPC m t=, a menu appears with the single-letter keys
 TODO items can have a priority level that affects their sort order
 in the agenda:
 
-| Key       | Action                              |
-|-----------+-------------------------------------|
-| =SPC m p= | Set priority (A/B/C) on heading     |
+| Key       | Action                          |
+|-----------+---------------------------------|
+| =SPC m p= | Set priority (A/B/C) on heading |
 
 Priorities are written as =[#A]=, =[#B]=, or =[#C]= after the TODO keyword.
 =[#A]= is the highest priority. In the agenda view, press =,= to change
@@ -950,14 +950,14 @@ priority on the selected item.
 
 *** Timestamps and scheduling
 
-| Key                 | Action                               |
-|---------------------+--------------------------------------|
-| =SPC m d=           | Set deadline on current heading      |
-| =SPC m s=           | Set scheduled date on current heading|
-| =C-c .=             | Insert an active timestamp           |
-| =C-c !=             | Insert an inactive timestamp         |
-| =Shift-up/down=     | Adjust date by one day               |
-| =Shift-left/right=  | Adjust by one day (alternative)      |
+| Key                | Action                                |
+|--------------------+---------------------------------------|
+| =SPC m d=          | Set deadline on current heading       |
+| =SPC m s=          | Set scheduled date on current heading |
+| =C-c .=            | Insert an active timestamp            |
+| =C-c !=            | Insert an inactive timestamp          |
+| =Shift-up/down=    | Adjust date by one day                |
+| =Shift-left/right= | Adjust by one day (alternative)       |
 
 *Active* timestamps =<2026-03-01 Sat>= show up in the agenda. *Inactive*
 timestamps =[2026-03-01 Sat]= are for reference only and do not appear
@@ -971,10 +971,10 @@ The date picker appears when inserting timestamps. Type a date or use
 Tags are keywords attached to headlines. They appear right-aligned,
 surrounded by colons:
 
-| Key       | Action                                 |
-|-----------+----------------------------------------|
-| =SPC m q= | Set tags on current heading            |
-| =C-c C-q= | Set tags (alternative)                 |
+| Key       | Action                      |
+|-----------+-----------------------------|
+| =SPC m q= | Set tags on current heading |
+| =C-c C-q= | Set tags (alternative)      |
 
 Tags are *inherited*: if a parent heading has =:project:=, all its
 children implicitly have that tag too. This is useful for filtering
@@ -986,19 +986,19 @@ everything beneath it.
 Headlines can have metadata stored in property drawers — a collapsible
 block right under the headline:
 
-| Key           | Action                            |
-|---------------+-----------------------------------|
-| =SPC m o=     | Set a property on current heading |
-| =C-c C-x p=   | Set property (alternative)       |
+| Key         | Action                            |
+|-------------+-----------------------------------|
+| =SPC m o=   | Set a property on current heading |
+| =C-c C-x p= | Set property (alternative)        |
 
 *** Links
 
-| Key           | Action                               |
-|---------------+--------------------------------------|
-| =SPC m l l=   | Insert or edit link                  |
-| =RET=         | Follow link under cursor             |
-| =C-c C-o=     | Follow link (alternative)            |
-| =SPC m l s=   | Store link to current location       |
+| Key         | Action                         |
+|-------------+--------------------------------|
+| =SPC m l l= | Insert or edit link            |
+| =RET=       | Follow link under cursor       |
+| =C-c C-o=   | Follow link (alternative)      |
+| =SPC m l s= | Store link to current location |
 
 Store a link first (=SPC m l s=), navigate elsewhere, then insert it
 (=SPC m l l=). Org remembers stored links and offers them as options
@@ -1009,25 +1009,25 @@ when inserting.
 Org tables auto-align when you press =TAB=. Just type pipe characters
 to start a table and =TAB= between cells.
 
-| Key             | Action                               |
-|-----------------+--------------------------------------|
-| =TAB=           | Move to next cell (auto-aligns)      |
-| =Shift-TAB=     | Move to previous cell                |
-| =M-left/right=  | Move column left/right               |
-| =M-up/down=     | Move row up/down                     |
-| =SPC m b -=     | Insert horizontal separator          |
-| =SPC m b d c=   | Delete column                        |
-| =SPC m b d r=   | Delete row                           |
-| =SPC m b i c=   | Insert column                        |
-| =SPC m b i r=   | Insert row                           |
+| Key            | Action                          |
+|----------------+---------------------------------|
+| =TAB=          | Move to next cell (auto-aligns) |
+| =Shift-TAB=    | Move to previous cell           |
+| =M-left/right= | Move column left/right          |
+| =M-up/down=    | Move row up/down                |
+| =SPC m b -=    | Insert horizontal separator     |
+| =SPC m b d c=  | Delete column                   |
+| =SPC m b d r=  | Delete row                      |
+| =SPC m b i c=  | Insert column                   |
+| =SPC m b i r=  | Insert row                      |
 
 *** Source code blocks
 
-| Key         | Action                                  |
-|-------------+-----------------------------------------|
-| =C-c C-c=   | Evaluate code block at point           |
-| =C-c '=     | Edit code block in a dedicated buffer  |
-| =C-c C-v t= | Tangle (export code blocks to files)   |
+| Key         | Action                                |
+|-------------+---------------------------------------|
+| =C-c C-c=   | Evaluate code block at point          |
+| =C-c '=     | Edit code block in a dedicated buffer |
+| =C-c C-v t= | Tangle (export code blocks to files)  |
 
 To insert a new source block quickly, type =<s= then press =TAB=
 (yasnippet expansion in Doom). This expands to a =#+BEGIN_SRC= /
@@ -1035,9 +1035,9 @@ To insert a new source block quickly, type =<s= then press =TAB=
 
 *** Export
 
-| Key         | Action                         |
-|-------------+--------------------------------|
-| =SPC m e=   | Open export dispatcher         |
+| Key       | Action                 |
+|-----------+------------------------|
+| =SPC m e= | Open export dispatcher |
 
 From the dispatcher:
 - =h o= — export to HTML and open in browser
@@ -1069,20 +1069,20 @@ deadlines 7 days out.
 
 *** Opening the agenda
 
-| Key         | Action                              |
-|-------------+-------------------------------------|
-| =SPC o A=   | Open agenda dispatcher (choose view)|
+| Key       | Action                               |
+|-----------+--------------------------------------|
+| =SPC o A= | Open agenda dispatcher (choose view) |
 
 The dispatcher (=SPC o A=) presents these built-in views plus your
 custom commands:
 
-| Key | View                                           |
-|-----+------------------------------------------------|
-| =a= | Weekly agenda + scheduled/deadline items        |
-| =t= | Global TODO list (all TODOs across files)       |
-| =T= | TODO list filtered by specific keyword          |
-| =s= | Full-text search across agenda files            |
-| =m= | Match items by tags                             |
+| Key | View                                      |
+|-----+-------------------------------------------|
+| =a= | Weekly agenda + scheduled/deadline items  |
+| =t= | Global TODO list (all TODOs across files) |
+| =T= | TODO list filtered by specific keyword    |
+| =s= | Full-text search across agenda files      |
+| =m= | Match items by tags                       |
 
 *** The weekly agenda view
 
@@ -1098,19 +1098,19 @@ What you see:
 
 *** Navigating the agenda
 
-| Key         | Action                                |
-|-------------+---------------------------------------|
-| =j / k=     | Move up/down between items            |
-| =RET=       | Jump to the item in its source file   |
-| =TAB=       | Show item in other window (stay in agenda) |
-| =f=         | Forward one day/week                  |
-| =b=         | Backward one day/week                 |
-| =.=         | Jump to today                         |
-| =v d=       | Switch to day view                    |
-| =v w=       | Switch to week view                   |
-| =v m=       | Switch to month view                  |
-| =r=         | Rebuild/refresh the agenda            |
-| =q=         | Quit agenda                           |
+| Key     | Action                                     |
+|---------+--------------------------------------------|
+| =j / k= | Move up/down between items                 |
+| =RET=   | Jump to the item in its source file        |
+| =TAB=   | Show item in other window (stay in agenda) |
+| =f=     | Forward one day/week                       |
+| =b=     | Backward one day/week                      |
+| =.=     | Jump to today                              |
+| =v d=   | Switch to day view                         |
+| =v w=   | Switch to week view                        |
+| =v m=   | Switch to month view                       |
+| =r=     | Rebuild/refresh the agenda                 |
+| =q=     | Quit agenda                                |
 
 *** Acting on items from the agenda
 
@@ -1131,12 +1131,13 @@ source file:
 
 While in any agenda view, narrow down what's shown:
 
-| Key   | Action                                       |
-|-------+----------------------------------------------|
-| =/=   | Filter by tag                                |
-| =<=   | Filter by category (based on filename)       |
-| ===   | Filter by regular expression                 |
-| =|=   | Remove all active filters                    |
+| Key | Action                                 |
+|-----+----------------------------------------|
+| =/= | Filter by tag                          |
+| =<= | Filter by category (based on filename) |
+| === | Filter by regular expression           |
+| =   | Remove all active filters              |
+#+TBLFM: $2=Remove all active filters
 
 *** The TODO list view
 
@@ -1158,10 +1159,10 @@ Items are grouped by file.
 Your =config.el= defines two custom views accessible from the
 dispatcher:
 
-| Key | View           | What it shows                                |
-|-----+----------------+----------------------------------------------|
-| =d= | Dashboard      | Today's agenda + NEXT actions + WAITING items |
-| =w= | Weekly Review  | 7-day agenda + all TODOs + WAITING items      |
+| Key | View          | What it shows                                 |
+|-----+---------------+-----------------------------------------------|
+| =d= | Dashboard     | Today's agenda + NEXT actions + WAITING items |
+| =w= | Weekly Review | 7-day agenda + all TODOs + WAITING items      |
 
 The actual config:
 
@@ -1287,13 +1288,13 @@ the block.
 *** Tables with formulas
 
 #+BEGIN_EXAMPLE
-| Item     | Qty | Price | Total  |
-|----------+-----+-------+--------|
-| Apples   |   5 |  1.20 |   6.00 |
-| Bananas  |   3 |  0.50 |   1.50 |
-| Oranges  |   4 |  0.80 |   3.20 |
-|----------+-----+-------+--------|
-| Total    |     |       |  10.70 |
+| Item    | Qty | Price | Total |
+|---------+-----+-------+-------|
+| Apples  |   5 |  1.20 |  6.00 |
+| Bananas |   3 |  0.50 |  1.50 |
+| Oranges |   4 |  0.80 |  3.20 |
+|---------+-----+-------+-------|
+| Total   |     |       | 10.70 |
 ,#+TBLFM: $4=$2*$3;%.2f::@5$4=vsum(@2$4..@4$4);%.2f
 #+END_EXAMPLE
 
@@ -1340,15 +1341,15 @@ nvim .                   # Open in current directory
 
 *** Key differences from Doom Emacs
 
-| Aspect           | Doom Emacs            | Neovim (your config)    |
-|------------------+-----------------------+-------------------------|
-| Leader key       | =SPC=                 | =Space= (=<leader>=)   |
-| File explorer    | Dired                 | mini.files              |
-| Fuzzy finder     | Vertico               | Telescope               |
-| Git              | Magit                 | Neogit                  |
-| Completion       | corfu                 | blink.cmp               |
-| Package manager  | straight.el / doom    | lazy.nvim               |
-| Colorscheme      | modus-vivendi-tinted  | tokyonight-night        |
+| Aspect          | Doom Emacs           | Neovim (your config) |
+|-----------------+----------------------+----------------------|
+| Leader key      | =SPC=                | =Space= (=<leader>=) |
+| File explorer   | Dired                | mini.files           |
+| Fuzzy finder    | Vertico              | Telescope            |
+| Git             | Magit                | Neogit               |
+| Completion      | corfu                | blink.cmp            |
+| Package manager | straight.el / doom   | lazy.nvim            |
+| Colorscheme     | modus-vivendi-tinted | tokyonight-night     |
 
 The Vim keybindings (=hjkl=, =dd=, =yy=, =ci"=, etc.) are identical in
 both editors since Doom Emacs uses evil-mode.
@@ -1357,41 +1358,41 @@ both editors since Doom Emacs uses evil-mode.
 
 Your =init.lua= sets these options:
 
-| Setting              | Value           | Effect                               |
-|----------------------+-----------------+--------------------------------------|
-| =number=             | =true=          | Line numbers shown                   |
-| =relativenumber=     | off (commented) | Absolute line numbers (not relative) |
-| =mouse=              | =a=             | Mouse enabled in all modes           |
-| =clipboard=          | =unnamedplus=   | System clipboard synced with Neovim  |
-| =ignorecase=         | =true=          | Case-insensitive search              |
-| =smartcase=          | =true=          | ...unless you type a capital letter  |
-| =splitright=         | =true=          | New vertical splits open right       |
-| =splitbelow=         | =true=          | New horizontal splits open below     |
-| =scrolloff=          | =10=            | 10 lines of context above/below cursor |
-| =cursorline=         | =true=          | Current line highlighted             |
-| =inccommand=         | =split=         | Live preview for =:s/old/new/=       |
-| =undofile=           | =true=          | Undo history persists after closing  |
-| =listchars=          | visible         | Tabs (=»=), trailing spaces (=·=)   |
-| =confirm=            | =true=          | Ask to save instead of erroring on =:q= |
+| Setting          | Value           | Effect                                  |
+|------------------+-----------------+-----------------------------------------|
+| =number=         | =true=          | Line numbers shown                      |
+| =relativenumber= | off (commented) | Absolute line numbers (not relative)    |
+| =mouse=          | =a=             | Mouse enabled in all modes              |
+| =clipboard=      | =unnamedplus=   | System clipboard synced with Neovim     |
+| =ignorecase=     | =true=          | Case-insensitive search                 |
+| =smartcase=      | =true=          | ...unless you type a capital letter     |
+| =splitright=     | =true=          | New vertical splits open right          |
+| =splitbelow=     | =true=          | New horizontal splits open below        |
+| =scrolloff=      | =10=            | 10 lines of context above/below cursor  |
+| =cursorline=     | =true=          | Current line highlighted                |
+| =inccommand=     | =split=         | Live preview for =:s/old/new/=          |
+| =undofile=       | =true=          | Undo history persists after closing     |
+| =listchars=      | visible         | Tabs (=»=), trailing spaces (=·=)       |
+| =confirm=        | =true=          | Ask to save instead of erroring on =:q= |
 
 *** General keymaps
 
-| Key              | Action                                   |
-|------------------+------------------------------------------|
-| =Escape=         | Clear search highlights                  |
-| =<leader>q=      | Open diagnostic quickfix list           |
-| =<leader>f=      | Format current buffer (conform.nvim)    |
-| =C-h / C-j / C-k / C-l= | Move focus between windows      |
-| =Esc Esc=        | Exit terminal mode (instead of =C-\ C-n=) |
+| Key                     | Action                                    |
+|-------------------------+-------------------------------------------|
+| =Escape=                | Clear search highlights                   |
+| =<leader>q=             | Open diagnostic quickfix list             |
+| =<leader>f=             | Format current buffer (conform.nvim)      |
+| =C-h / C-j / C-k / C-l= | Move focus between windows                |
+| =Esc Esc=               | Exit terminal mode (instead of =C-\ C-n=) |
 
 *** Managing plugins
 
-| Command       | Action                                   |
-|---------------+------------------------------------------|
-| =:Lazy=        | Open plugin manager dashboard           |
-| =:Lazy update= | Update all plugins                      |
-| =:Mason=       | Open language server / tool manager     |
-| =:checkhealth= | Run health checks for diagnostics      |
+| Command        | Action                              |
+|----------------+-------------------------------------|
+| =:Lazy=        | Open plugin manager dashboard       |
+| =:Lazy update= | Update all plugins                  |
+| =:Mason=       | Open language server / tool manager |
+| =:checkhealth= | Run health checks for diagnostics   |
 
 ** which-key — Discoverability
 
@@ -1400,13 +1401,13 @@ pressing the leader key or any prefix, listing all available next keys.
 
 Registered groups:
 
-| Prefix      | Group          |
-|-------------+----------------|
-| =<leader>s= | [S]earch       |
-| =<leader>t= | [T]oggle       |
-| =<leader>h= | Git [H]unk     |
-| =<leader>g= | [G]it          |
-| =<leader>r= | [R]epl         |
+| Prefix      | Group      |
+|-------------+------------|
+| =<leader>s= | [S]earch   |
+| =<leader>t= | [T]oggle   |
+| =<leader>h= | Git [H]unk |
+| =<leader>g= | [G]it      |
+| =<leader>r= | [R]epl     |
 
 Press =<leader>= and wait — which-key shows you everything. Press any
 prefix to see its subkeys.
@@ -1421,35 +1422,35 @@ the screen with a live preview pane on the right.
 
 All search commands use the =<leader>s= prefix:
 
-| Key               | Action                                  |
-|-------------------+-----------------------------------------|
-| =<leader>sf=       | [S]earch [F]iles in project            |
-| =<leader>sg=       | [S]earch by [G]rep (live grep)         |
-| =<leader>sw=       | [S]earch current [W]ord under cursor   |
-| =<leader>sh=       | [S]earch [H]elp tags (Neovim docs)     |
-| =<leader>sk=       | [S]earch [K]eymaps (all keybindings)   |
-| =<leader>sd=       | [S]earch [D]iagnostics                 |
-| =<leader>sc=       | [S]earch [C]ommands                    |
+| Key                | Action                                    |
+|--------------------+-------------------------------------------|
+| =<leader>sf=       | [S]earch [F]iles in project               |
+| =<leader>sg=       | [S]earch by [G]rep (live grep)            |
+| =<leader>sw=       | [S]earch current [W]ord under cursor      |
+| =<leader>sh=       | [S]earch [H]elp tags (Neovim docs)        |
+| =<leader>sk=       | [S]earch [K]eymaps (all keybindings)      |
+| =<leader>sd=       | [S]earch [D]iagnostics                    |
+| =<leader>sc=       | [S]earch [C]ommands                       |
 | =<leader>ss=       | [S]earch [S]elect Telescope (picker list) |
-| =<leader>sr=       | [S]earch [R]esume (reopen last search) |
-| =<leader>s.=       | [S]earch recent files (repeat)         |
-| =<leader>s/=       | Search in open files (live grep)       |
-| =<leader>sn=       | [S]earch [N]eovim config files         |
-| =<leader>/=        | Fuzzy search in current buffer         |
-| =<leader><leader>= | Find existing buffers                  |
+| =<leader>sr=       | [S]earch [R]esume (reopen last search)    |
+| =<leader>s.=       | [S]earch recent files (repeat)            |
+| =<leader>s/=       | Search in open files (live grep)          |
+| =<leader>sn=       | [S]earch [N]eovim config files            |
+| =<leader>/=        | Fuzzy search in current buffer            |
+| =<leader><leader>= | Find existing buffers                     |
 
 *** Inside Telescope
 
-| Key           | Action                                |
-|---------------+---------------------------------------|
-| =C-n / C-p=   | Move down/up in results (or arrows)  |
-| =RET=         | Open selected result                  |
-| =C-v=         | Open in vertical split                |
-| =C-x=         | Open in horizontal split              |
-| =C-enter=     | Refine search (to fuzzy refine)       |
-| =Escape=      | Close Telescope                       |
-| =?= (normal)  | Show Telescope's own keymaps         |
-| =C-/= (insert)| Show Telescope's own keymaps         |
+| Key            | Action                              |
+|----------------+-------------------------------------|
+| =C-n / C-p=    | Move down/up in results (or arrows) |
+| =RET=          | Open selected result                |
+| =C-v=          | Open in vertical split              |
+| =C-x=          | Open in horizontal split            |
+| =C-enter=      | Refine search (to fuzzy refine)     |
+| =Escape=       | Close Telescope                     |
+| =?= (normal)   | Show Telescope's own keymaps        |
+| =C-/= (insert) | Show Telescope's own keymaps        |
 
 ** mini.files — File Explorer
 
@@ -1457,12 +1458,12 @@ mini.files is a file explorer that opens as a floating column view
 with a preview pane. It behaves like a Vim buffer — you can edit
 filenames directly.
 
-| Key          | Action                              |
-|--------------+-------------------------------------|
-| =<leader>e=  | Toggle file explorer                |
-| =j / k=      | Move up / down                      |
-| =l= or =RET= | Enter directory / open file         |
-| =h=          | Go to parent directory              |
+| Key          | Action                      |
+|--------------+-----------------------------|
+| =<leader>e=  | Toggle file explorer        |
+| =j / k=      | Move up / down              |
+| =l= or =RET= | Enter directory / open file |
+| =h=          | Go to parent directory      |
 
 *** Editing the filesystem
 
@@ -1483,15 +1484,15 @@ all verbs (=d=, =c=, =y=, =v=, etc.).
 
 *** Standard text objects (enhanced)
 
-| Text object | What it selects                   |
-|-------------+-----------------------------------|
-| =i)= / =a)==  | Inside / around parentheses      |
-| =i]= / =a]=   | Inside / around brackets         |
-| =i}= / =a}=   | Inside / around braces           |
-| =i"= / =a"=   | Inside / around double quotes    |
-| =i'= / =a'=   | Inside / around single quotes    |
-| =i`= / =a`=   | Inside / around backticks        |
-| =it= / =at=   | Inside / around HTML/XML tags    |
+| Text object  | What it selects               |
+|--------------+-------------------------------|
+| =i)= / =a)== | Inside / around parentheses   |
+| =i]= / =a]=  | Inside / around brackets      |
+| =i}= / =a}=  | Inside / around braces        |
+| =i"= / =a"=  | Inside / around double quotes |
+| =i'= / =a'=  | Inside / around single quotes |
+| =i`= / =a`=  | Inside / around backticks     |
+| =it= / =at=  | Inside / around HTML/XML tags |
 
 *** Next / last seeking
 
@@ -1499,12 +1500,12 @@ The key feature of mini.ai is automatic seeking: if the cursor is
 not currently inside the text object, it seeks forward to the *next*
 occurrence. Use the =n= (next) and =l= (last/previous) modifiers:
 
-| Key     | Action                                     |
-|---------+--------------------------------------------|
-| =cin)=  | Change inside the [n]ext parentheses       |
-| =cil)=  | Change inside the [l]ast parentheses       |
-| =dinq=  | Delete inside the [n]ext [q]uote           |
-| =yinq=  | Yank inside the next quote                 |
+| Key    | Action                               |
+|--------+--------------------------------------|
+| =cin)= | Change inside the [n]ext parentheses |
+| =cil)= | Change inside the [l]ast parentheses |
+| =dinq= | Delete inside the [n]ext [q]uote     |
+| =yinq= | Yank inside the next quote           |
 
 This means you don't have to move your cursor to the target first —
 =cin"= from anywhere on the line will find and change inside the next
@@ -1525,11 +1526,11 @@ for text objects.
 mini.surround lets you manipulate surrounding characters (brackets,
 quotes, tags) with three operations. All use the =s= prefix:
 
-| Key       | Action                              | Example                   |
-|-----------+-------------------------------------+---------------------------|
-| =sa{motion}{char}= | [S]urround [A]dd            | =saiw)= → surround word with =()= |
-| =sd{char}= | [S]urround [D]elete                | =sd'= → remove surrounding ='= |
-| =sr{old}{new}= | [S]urround [R]eplace          | =sr)"= → change =()= to =""= |
+| Key                | Action               | Example                           |
+|--------------------+----------------------+-----------------------------------|
+| =sa{motion}{char}= | [S]urround [A]dd     | =saiw)= → surround word with =()= |
+| =sd{char}=         | [S]urround [D]elete  | =sd'= → remove surrounding ='=    |
+| =sr{old}{new}=     | [S]urround [R]eplace | =sr)"= → change =()= to =""=      |
 
 *** Detailed examples
 
@@ -1565,13 +1566,13 @@ selection:
 mini.operators adds new operator commands that work with motions
 and text objects, just like =d= and =c=.
 
-| Prefix        | Operator    | Example                              |
-|---------------+-------------+--------------------------------------|
-| =g={motion}=  | Evaluate    | =g=ip= evaluate inner paragraph     |
-| =gR{motion}=  | Replace     | =gRiw= replace word with register   |
-| =ge{motion}=  | Exchange    | =geiw= on two words to swap them    |
-| =gm{motion}=  | Multiply    | =gmiw= duplicate the word           |
-| =gs{motion}=  | Sort        | =gsip= sort lines in paragraph      |
+| Prefix       | Operator | Example                           |
+|--------------+----------+-----------------------------------|
+| =g={motion}= | Evaluate | =g=ip= evaluate inner paragraph   |
+| =gR{motion}= | Replace  | =gRiw= replace word with register |
+| =ge{motion}= | Exchange | =geiw= on two words to swap them  |
+| =gm{motion}= | Multiply | =gmiw= duplicate the word         |
+| =gs{motion}= | Sort     | =gsip= sort lines in paragraph    |
 
 *** Replace workflow
 
@@ -1609,12 +1610,12 @@ it works automatically.
 
 Gitsigns shows change markers in the left gutter next to line numbers:
 
-| Sign | Meaning           |
-|------+-------------------|
-| =+=  | Added line        |
-| =~=  | Changed line      |
-| =_=  | Deleted line      |
-| =‾=  | Top-deleted line  |
+| Sign | Meaning          |
+|------+------------------|
+| =+=  | Added line       |
+| =~=  | Changed line     |
+| =_=  | Deleted line     |
+| =‾=  | Top-deleted line |
 
 These update live as you edit files in a Git repository.
 
@@ -1622,13 +1623,13 @@ These update live as you edit files in a Git repository.
 
 Neogit is a Magit-inspired Git interface.
 
-| Key           | Action                        |
-|---------------+-------------------------------|
-| =<leader>gg=  | Open Neogit status            |
-| =<leader>gc=  | Open commit dialog            |
-| =<leader>gp=  | Open push dialog              |
-| =<leader>gl=  | Open pull dialog              |
-| =<leader>gb=  | Open branch dialog            |
+| Key          | Action             |
+|--------------+--------------------|
+| =<leader>gg= | Open Neogit status |
+| =<leader>gc= | Open commit dialog |
+| =<leader>gp= | Open push dialog   |
+| =<leader>gl= | Open pull dialog   |
+| =<leader>gb= | Open branch dialog |
 
 Inside the Neogit status buffer, use =s= to stage, =u= to unstage,
 =c c= to commit, =P= to push. Press =?= for all commands. Press =q=
@@ -1649,28 +1650,28 @@ LSP starts automatically when you open a file with a matching server.
 
 All LSP keymaps use the =gr= prefix:
 
-| Key           | Action                                  |
-|---------------+-----------------------------------------|
-| =grd=         | [G]oto [D]efinition (via Telescope)     |
-| =grr=         | [G]oto [R]eferences (via Telescope)     |
-| =gri=         | [G]oto [I]mplementation (via Telescope) |
-| =grt=         | [G]oto [T]ype Definition                |
-| =grn=         | [R]e[n]ame symbol across project        |
-| =gra=         | Code [A]ction (quick fixes, imports)    |
-| =grD=         | [G]oto [D]eclaration (e.g. C headers)   |
-| =gO=          | Document symbols (outline via Telescope)|
-| =gW=          | Workspace symbols (project-wide)        |
-| =K=           | Hover documentation (built-in)          |
-| =<leader>th=  | [T]oggle inlay [H]ints                  |
+| Key          | Action                                   |
+|--------------+------------------------------------------|
+| =grd=        | [G]oto [D]efinition (via Telescope)      |
+| =grr=        | [G]oto [R]eferences (via Telescope)      |
+| =gri=        | [G]oto [I]mplementation (via Telescope)  |
+| =grt=        | [G]oto [T]ype Definition                 |
+| =grn=        | [R]e[n]ame symbol across project         |
+| =gra=        | Code [A]ction (quick fixes, imports)     |
+| =grD=        | [G]oto [D]eclaration (e.g. C headers)    |
+| =gO=         | Document symbols (outline via Telescope) |
+| =gW=         | Workspace symbols (project-wide)         |
+| =K=          | Hover documentation (built-in)           |
+| =<leader>th= | [T]oggle inlay [H]ints                   |
 
 *** Diagnostics
 
-| Key           | Action                                  |
-|---------------+-----------------------------------------|
-| =]d=          | Jump to next diagnostic                 |
-| =[d=          | Jump to previous diagnostic             |
-| =<leader>q=   | Open diagnostics in quickfix list       |
-| =<leader>sd=  | Search all diagnostics (Telescope)      |
+| Key          | Action                             |
+|--------------+------------------------------------|
+| =]d=         | Jump to next diagnostic            |
+| =[d=         | Jump to previous diagnostic        |
+| =<leader>q=  | Open diagnostics in quickfix list  |
+| =<leader>sd= | Search all diagnostics (Telescope) |
 
 Diagnostics appear as virtual text at the end of lines (your config
 has =virtual_text = true=). Errors get underlines. Jumping with =]d= /
@@ -1686,9 +1687,9 @@ to clear.
 
 Code is formatted automatically on save. You can also format manually:
 
-| Key           | Action                       |
-|---------------+------------------------------|
-| =<leader>f=   | Format current buffer        |
+| Key         | Action                |
+|-------------+-----------------------|
+| =<leader>f= | Format current buffer |
 
 Configured formatters:
 - *Lua:* stylua (installed via Mason)
@@ -1707,7 +1708,7 @@ Your config uses the =enter= preset for accepting completions:
 | Key           | Action                                 |
 |---------------+----------------------------------------|
 | =RET=         | Accept selected completion             |
-| =C-n= / =C-p= | Next / previous item (or up/down)     |
+| =C-n= / =C-p= | Next / previous item (or up/down)      |
 | =C-space=     | Open menu or open docs if menu is open |
 | =C-e=         | Dismiss completion menu                |
 | =C-k=         | Toggle signature help                  |
@@ -1720,14 +1721,14 @@ selected. Signature help shows function parameter info as you type.
 
 This plugin highlights special keywords in code comments:
 
-| Keyword   | Meaning                        | Color  |
-|-----------+--------------------------------+--------|
-| =TODO=    | Something to do                | Yellow |
-| =FIXME=   | Broken, needs fixing           | Red    |
-| =HACK=    | Questionable workaround        | Orange |
-| =NOTE=    | Important information          | Blue   |
-| =WARN=    | Warning about something        | Orange |
-| =PERF=    | Performance concern            | Purple |
+| Keyword | Meaning                 | Color  |
+|---------+-------------------------+--------|
+| =TODO=  | Something to do         | Yellow |
+| =FIXME= | Broken, needs fixing    | Red    |
+| =HACK=  | Questionable workaround | Orange |
+| =NOTE=  | Important information   | Blue   |
+| =WARN=  | Warning about something | Orange |
+| =PERF=  | Performance concern     | Purple |
 
 Write these in comments and they will be visually highlighted. They
 also appear in =<leader>sd= (search diagnostics) and can be searched
@@ -1789,18 +1790,18 @@ the right, 80 columns wide.
 
 **** REPL control
 
-| Key               | Action                               |
-|-------------------+--------------------------------------|
-| =<leader>rs=       | [R]epl [S]tart (open Julia REPL)    |
-| =<leader>rr=       | [R]epl [R]estart                    |
-| =<leader>rf=       | [R]epl [F]ocus (jump to REPL)       |
-| =<leader>rh=       | [R]epl [H]ide                       |
-| =<leader>rq=       | [R]epl exit (quit)                  |
+| Key          | Action                           |
+|--------------+----------------------------------|
+| =<leader>rs= | [R]epl [S]tart (open Julia REPL) |
+| =<leader>rr= | [R]epl [R]estart                 |
+| =<leader>rf= | [R]epl [F]ocus (jump to REPL)    |
+| =<leader>rh= | [R]epl [H]ide                    |
+| =<leader>rq= | [R]epl exit (quit)               |
 
 **** Sending code to the REPL
 
-| Key               | Action                               |
-|-------------------+--------------------------------------|
+| Key                | Action                              |
+|--------------------+-------------------------------------|
 | =<leader>rl=       | Send current [l]ine                 |
 | =<leader>rp=       | Send current [p]aragraph            |
 | =<leader>ra=       | Send [a]ll (entire file)            |
@@ -1840,34 +1841,34 @@ julia -e 'using Pkg; Pkg.add("Revise")'
 
 ** Universal Vim motions (both editors)
 
-| Key       | Action                        |
-|-----------+-------------------------------|
-| =h/j/k/l= | Left / down / up / right     |
-| =w / b=   | Next / previous word          |
-| =gg / G=  | Top / bottom of file          |
-| =dd / yy= | Delete / yank line            |
-| =p / P=   | Paste after / before          |
-| =u / C-r= | Undo / redo                   |
-| =ci"=     | Change inside quotes          |
-| =/text=   | Search forward                |
-| =.=       | Repeat last command           |
+| Key       | Action                   |
+|-----------+--------------------------|
+| =h/j/k/l= | Left / down / up / right |
+| =w / b=   | Next / previous word     |
+| =gg / G=  | Top / bottom of file     |
+| =dd / yy= | Delete / yank line       |
+| =p / P=   | Paste after / before     |
+| =u / C-r= | Undo / redo              |
+| =ci"=     | Change inside quotes     |
+| =/text=   | Search forward           |
+| =.=       | Repeat last command      |
 
 ** Leader key comparison
 
-| Action          | Doom Emacs (=SPC=)   | Neovim (=<leader>=)          |
-|-----------------+----------------------+------------------------------|
-| Find file       | =SPC f f=            | =<leader>sf=                 |
-| Grep project    | =SPC /=              | =<leader>sg=                 |
-| Switch buffer   | =SPC b b=            | =<leader><leader>=           |
-| File explorer   | =SPC .= (Dired)      | =<leader>e= (mini.files)    |
-| Search buffer   | =SPC s s=            | =<leader>/=                  |
-| Git status      | =SPC g g= (Magit)    | =<leader>gg= (Neogit)       |
-| Go to definition| =gd=                 | =grd=                        |
-| Find references | =gD=                 | =grr=                        |
-| Code actions    | =SPC c a=            | =gra=                        |
-| Rename symbol   | =SPC c r=            | =grn=                        |
-| Format file     | =SPC c f=            | =<leader>f=                  |
-| REPL start      | =SPC o r=            | =<leader>rs=                 |
-| REPL send line  | =C-c C-c=            | =<leader>rl=                 |
-| Save file       | =SPC f s=            | =:w=                         |
-| Quit            | =SPC q q=            | =:qa=                        |
+| Action           | Doom Emacs (=SPC=) | Neovim (=<leader>=)      |
+|------------------+--------------------+--------------------------|
+| Find file        | =SPC f f=          | =<leader>sf=             |
+| Grep project     | =SPC /=            | =<leader>sg=             |
+| Switch buffer    | =SPC b b=          | =<leader><leader>=       |
+| File explorer    | =SPC .= (Dired)    | =<leader>e= (mini.files) |
+| Search buffer    | =SPC s s=          | =<leader>/=              |
+| Git status       | =SPC g g= (Magit)  | =<leader>gg= (Neogit)    |
+| Go to definition | =gd=               | =grd=                    |
+| Find references  | =gD=               | =grr=                    |
+| Code actions     | =SPC c a=          | =gra=                    |
+| Rename symbol    | =SPC c r=          | =grn=                    |
+| Format file      | =SPC c f=          | =<leader>f=              |
+| REPL start       | =SPC o r=          | =<leader>rs=             |
+| REPL send line   | =C-c C-c=          | =<leader>rl=             |
+| Save file        | =SPC f s=          | =:w=                     |
+| Quit             | =SPC q q=          | =:qa=                    |
