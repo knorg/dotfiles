@@ -2,12 +2,11 @@
 set -euo pipefail
 
 # =============================================================================
-# Debian 13 (Trixie) — Development Environment Setup
-# Supports: i3wm, Xfce4, both, or headless (Citrix VDI compatible)
+# Debian 13 (Trixie) — i3wm Development Environment Setup
+# Console login → startx → i3  (no display manager)
 # Config: github.com/knorg/dotfiles.git  +  GNU Stow
 #
-# Desktop environment (i3, Xfce4, or both), terminals (Alacritty, Kitty),
-# editors (Neovim, Emacs/Doom), and Tmux are offered as optional selections.
+# Neovim, Emacs (Doom), and Tmux are offered as optional selections.
 #
 # This script lives in the dotfiles repo. Usage:
 #   git clone https://github.com/knorg/dotfiles.git ~/.dotfiles
@@ -45,16 +44,18 @@ OPT_HIDPI=false
 OPT_HIDPI_REVERT=false
 OPT_HIDPI_HELP=false
 
-# -- Environment / tool selection (set by collect_choices) --------------------
-OPT_WITH_I3=false
-OPT_WITH_XFCE=false
+# -- Desktop environment selection (set by select_desktop) -------------------
+# Values: "i3" | "xfce" | "both" | "none"
+OPT_DESKTOP=""
+
+# -- Editor/tool selection (set by select_optional_packages) -----------------
 OPT_WITH_NEOVIM=false
 OPT_WITH_EMACS=false
 OPT_WITH_TMUX=false
-OPT_WITH_ALACRITTY=false
-OPT_WITH_KITTY=false
-OPT_REMOVE_LIGHTDM=false
-OPT_DO_HIDPI=false
+
+# -- Selected optional packages (populated by select, consumed by install) ---
+SELECTED_OPT_PKGS=()
+SELECTED_OPT_REPOS=()
 
 # -- Colors for output --------------------------------------------------------
 # ANSI-C quoting ($'...') stores actual escape bytes — works with cat, echo, printf
@@ -136,7 +137,7 @@ parse_args() {
 
 show_help() {
     cat <<EOF
-${BOLD}Debian 13 (Trixie) — Setup Script${NC}
+${BOLD}Debian 13 (Trixie) — i3wm Setup Script${NC}
 
 ${BOLD}Quick start:${NC}
   git clone https://github.com/knorg/dotfiles.git ~/.dotfiles
@@ -148,9 +149,7 @@ ${BOLD}Quick start:${NC}
 ${BOLD}Options:${NC}
   ${BOLD}Install${NC}
     --install           Run full setup (packages, dotfiles, julia, etc.)
-                        Desktop (i3, Xfce4, or both), terminals, editors,
-                        and tools are offered interactively.
-                        For Citrix VDI: select Xfce4 when prompted.
+                        Neovim, Emacs, and Tmux are offered interactively.
     --install --hidpi   Full install including HiDPI configuration
 
   ${BOLD}Neovim${NC}
@@ -165,17 +164,14 @@ ${BOLD}Options:${NC}
   ${BOLD}General${NC}
     --help, -h          Show this help
 
-${BOLD}Post-install checklist (i3):${NC}
+${BOLD}Post-install checklist:${NC}
   • If this is a fresh install, reboot to use console login → startx → i3
   • Verify i3 is the default: ${BOLD}sudo update-alternatives --config x-session-manager${NC}
-
-${BOLD}Post-install checklist (all environments):${NC}
   • Set GTK theme/icons/fonts: ${BOLD}lxappearance${NC}
   • Adjust compositor effects: ${BOLD}picom-conf${NC}
   • If Tmux was selected, install plugins (in a tmux session): ${BOLD}prefix + I${NC}
   • Check Julia: ${BOLD}juliaup status${NC}
   • If Emacs was selected: ${BOLD}systemctl --user status emacs${NC}
-  • If Brave was selected: verify policies at ${BOLD}brave://policy${NC}
 
 EOF
 }
@@ -235,11 +231,13 @@ CORE_PACKAGES=(
     curl
     unzip
     openssh-server
+    xinit            # provides startx (no display manager)
     gvfs-backends    # virtual filesystem (MTP, SMB, SFTP in file managers)
     smbclient        # SMB/CIFS network shares
 )
 
 TERMINAL_TOOLS=(
+    alacritty
     mc
     btop
     eza
@@ -249,24 +247,24 @@ TERMINAL_TOOLS=(
     maim
 )
 
-# Desktop tools installed with any DE/WM (i3, Xfce, or both)
-DESKTOP_SHARED=(
-    picom
-    picom-conf
-    rofi
-)
-
-# i3-specific packages (only when i3 is selected)
 I3_PACKAGES=(
-    xinit            # provides startx (no display manager)
     i3
     i3blocks
     feh
 )
 
-# Xfce4 packages (only when Xfce is selected)
 XFCE_PACKAGES=(
     xfce4
+    xfce4-goodies
+    lightdm
+    lightdm-gtk-greeter
+)
+
+# Shared desktop components — installed regardless of DE choice
+DESKTOP_SHARED=(
+    picom
+    picom-conf
+    rofi
 )
 
 APPEARANCE=(
@@ -293,6 +291,7 @@ APPEARANCE=(
 )
 
 DEV_TOOLS=(
+    npm
     shellcheck
     markdown
 )
@@ -301,7 +300,6 @@ DEV_TOOLS=(
 NEOVIM_DEPS=(
     cmake
     luarocks
-    npm              # needed for tree-sitter-cli
 )
 
 EMACS_DEPS=(
@@ -316,14 +314,6 @@ TMUX_DEPS=(
     tmux-plugin-manager
 )
 
-ALACRITTY_DEPS=(
-    alacritty
-)
-
-KITTY_DEPS=(
-    kitty
-)
-
 HARDWARE=(
     mpv              # media player / camera viewfinder
     v4l-utils        # Video4Linux camera utilities
@@ -335,10 +325,7 @@ HARDWARE=(
     libpam-fprintd
 )
 
-# Base packages installed regardless of DE/WM choice.
-# DESKTOP_SHARED, APPEARANCE, and HARDWARE are always installed.
-# I3_PACKAGES / XFCE_PACKAGES are added conditionally.
-BASE_PACKAGES=(
+ALL_PACKAGES=(
     "${CORE_PACKAGES[@]}"
     "${TERMINAL_TOOLS[@]}"
     "${DESKTOP_SHARED[@]}"
@@ -347,19 +334,47 @@ BASE_PACKAGES=(
     "${HARDWARE[@]}"
 )
 
+# -- Desktop environment selection --------------------------------------------
+# Let the user choose which DE/WM to install.  DE selection is always explicit
+# — unlike editors, DEs are NOT auto-detected on re-runs because a user who
+# chose "i3 only" shouldn't silently get Xfce maintenance steps just because
+# Xfce happens to be on the system.
+
+select_desktop() {
+    info "Desktop environment / window manager:"
+    echo ""
+
+    local i3_status="" xfce_status=""
+    dpkg -s i3 &>/dev/null    && i3_status=" ${GREEN}(installed)${NC}"
+    dpkg -s xfce4 &>/dev/null && xfce_status=" ${GREEN}(installed)${NC}"
+
+    echo -e "    ${BOLD}1)${NC}  i3wm (tiling WM, no DE)${i3_status}"
+    echo -e "    ${BOLD}2)${NC}  Xfce4 (full desktop environment)${xfce_status}"
+    echo -e "    ${BOLD}3)${NC}  Both (i3 + Xfce4)"
+    echo -e "    ${BOLD}0)${NC}  Skip — install neither"
+    echo ""
+
+    local reply
+    read -rp "$(echo -e "${YELLOW}[????]${NC}  Choose desktop [0/1/2/3]: ")" reply
+
+    case "$reply" in
+        1)   OPT_DESKTOP="i3"   ; ok "i3wm selected." ;;
+        2)   OPT_DESKTOP="xfce" ; ok "Xfce4 selected." ;;
+        3)   OPT_DESKTOP="both" ; ok "i3 + Xfce4 selected." ;;
+        0|"") OPT_DESKTOP="none" ; ok "Skipping desktop packages." ;;
+        *)   OPT_DESKTOP="none" ; warn "Invalid selection — skipping desktop packages." ;;
+    esac
+}
+
 # -- Optional packages (interactive selection) --------------------------------
 # Each entry: "label|package_name|repo_setup_function_or_empty"
 #
-# Virtual packages (prefixed with @) are not installed via apt directly:
-#   @neovim    — installed from GitHub release
-#   @emacs     — apt deps handled separately via EMACS_DEPS
-#   @tmux      — apt deps handled separately via TMUX_DEPS
-#   @alacritty — apt deps handled separately via ALACRITTY_DEPS
-#   @kitty     — apt deps handled separately via KITTY_DEPS
+# Virtual packages (prefixed with @) are not installed via apt:
+#   @neovim  — installed from GitHub release
+#   @emacs   — apt deps handled separately via EMACS_DEPS
+#   @tmux    — apt deps handled separately via TMUX_DEPS
 
 OPTIONAL_PACKAGES=(
-    "Alacritty (GPU-accelerated terminal)|@alacritty|"
-    "Kitty (GPU-accelerated terminal)|@kitty|"
     "Tmux + plugins|@tmux|"
     "Neovim (GitHub release)|@neovim|"
     "Emacs + Doom|@emacs|"
@@ -498,9 +513,46 @@ CITRIX
     ok "Ctrl+F2 fullscreen toggle enabled."
 }
 
-# Deferred selections from Q&A — filled by select_optional_packages,
-# consumed by install_selected_optional_packages.
-SELECTED_OPT_PKGS=()
+# -- Brave browser managed policy ---------------------------------------------
+# Copies .config/brave/settings.json from dotfiles to /etc/brave/policies/managed/
+# so Brave picks up the policy on every launch.  The dotfiles path is NOT a stow
+# target (Brave only reads /etc/brave/), it just lives in the repo for versioning.
+
+install_brave_policy() {
+    local src="${DOTFILES_DIR}/.config/brave/settings.json"
+    local dest_dir="/etc/brave/policies/managed"
+    local dest="${dest_dir}/settings.json"
+
+    if ! command -v brave-browser &>/dev/null; then
+        return
+    fi
+
+    if [[ ! -f "$src" ]]; then
+        warn "Brave policy source not found at ${src}, skipping."
+        return
+    fi
+
+    # Validate JSON before deploying
+    if command -v python3 &>/dev/null; then
+        if ! python3 -c "import json, sys; json.load(open(sys.argv[1]))" "$src" 2>/dev/null; then
+            warn "Brave policy JSON is invalid — skipping."
+            return
+        fi
+    fi
+
+    # Skip if destination is identical
+    if [[ -f "$dest" ]] && cmp -s "$src" "$dest"; then
+        ok "Brave policy already up to date."
+        return
+    fi
+
+    info "Installing Brave managed policy..."
+    sudo mkdir -p "$dest_dir"
+    sudo cp "$src" "$dest"
+    sudo chmod 644 "$dest"
+    ok "Brave policy installed to ${dest}."
+    info "Verify at: brave://policy"
+}
 
 select_optional_packages() {
     info "Optional packages:"
@@ -542,6 +594,7 @@ select_optional_packages() {
         local label="${entry%%|*}"
         local rest="${entry#*|}"
         local pkg="${rest%%|*}"
+        local repo_fn="${rest#*|}"
 
         # Skip if already installed
         if _is_pkg_installed "$pkg"; then
@@ -551,16 +604,6 @@ select_optional_packages() {
 
         # Handle virtual packages (editors and tools)
         case "$pkg" in
-            @alacritty)
-                OPT_WITH_ALACRITTY=true
-                ok "Alacritty selected."
-                continue
-                ;;
-            @kitty)
-                OPT_WITH_KITTY=true
-                ok "Kitty selected."
-                continue
-                ;;
             @tmux)
                 OPT_WITH_TMUX=true
                 ok "Tmux selected — will install with plugin manager."
@@ -578,37 +621,26 @@ select_optional_packages() {
                 ;;
         esac
 
-        # Non-virtual package — defer to install phase
-        SELECTED_OPT_PKGS+=("$entry")
-        ok "${label} selected."
+        # Record repo function name (not called yet — curl may not be installed)
+        if [[ -n "$repo_fn" ]]; then
+            SELECTED_OPT_REPOS+=("$repo_fn")
+        fi
+
+        SELECTED_OPT_PKGS+=("$pkg")
     done
 }
 
-# Phase 2: set up repos, refresh apt, install non-virtual optional packages.
-# Called after base packages (including curl, gpg) are in place.
 install_selected_optional_packages() {
+    # Nothing selected → skip
     if [[ ${#SELECTED_OPT_PKGS[@]} -eq 0 ]]; then
         return
     fi
 
-    info "--- Optional Packages (apt) ---"
-
+    # Set up external repos (safe now — curl is installed from step 1)
     local -a repos_added=()
-    local -a pkgs_to_install=()
-
-    for entry in "${SELECTED_OPT_PKGS[@]}"; do
-        local label="${entry%%|*}"
-        local rest="${entry#*|}"
-        local pkg="${rest%%|*}"
-        local repo_fn="${rest#*|}"
-
-        # Set up external repo if needed
-        if [[ -n "$repo_fn" ]]; then
-            "$repo_fn"
-            repos_added+=("$pkg")
-        fi
-
-        pkgs_to_install+=("$pkg")
+    for repo_fn in "${SELECTED_OPT_REPOS[@]}"; do
+        "$repo_fn"
+        repos_added+=("$repo_fn")
     done
 
     # Refresh apt if repos were added
@@ -616,22 +648,164 @@ install_selected_optional_packages() {
         sudo apt update -qq
     fi
 
-    if [[ ${#pkgs_to_install[@]} -gt 0 ]]; then
-        install_missing_packages "${pkgs_to_install[@]}"
-    fi
+    install_missing_packages "${SELECTED_OPT_PKGS[@]}"
 }
 
 # Check if a package (real or virtual) is installed
 _is_pkg_installed() {
     local pkg="$1"
     case "$pkg" in
-        @tmux)      command -v tmux &>/dev/null ;;
-        @neovim)    command -v nvim &>/dev/null ;;
-        @emacs)     command -v emacs &>/dev/null ;;
-        @alacritty) command -v alacritty &>/dev/null ;;
-        @kitty)     command -v kitty &>/dev/null ;;
-        *)          dpkg -s "$pkg" &>/dev/null ;;
+        @tmux)   command -v tmux &>/dev/null ;;
+        @neovim) command -v nvim &>/dev/null ;;
+        @emacs)  command -v emacs &>/dev/null ;;
+        *)       dpkg -s "$pkg" &>/dev/null ;;
     esac
+}
+
+# -- Remove lightdm -----------------------------------------------------------
+
+remove_lightdm() {
+    if dpkg -s lightdm &>/dev/null; then
+        info "lightdm display manager is installed."
+        info "This setup uses console login → startx → i3 (no display manager)."
+        if ask_yes_no "Remove lightdm and lightdm-gtk-greeter?"; then
+            info "Removing lightdm display manager..."
+            sudo apt remove --purge -y lightdm lightdm-gtk-greeter 2>/dev/null || true
+            sudo apt autoremove --purge -y
+            ok "lightdm removed."
+        else
+            warn "Keeping lightdm. Console login via startx will still be configured,"
+            warn "but lightdm may start instead on boot."
+        fi
+    else
+        ok "lightdm not installed."
+    fi
+}
+
+# -- Default terminal emulator ------------------------------------------------
+# Let the user pick which terminal is the system default via
+# update-alternatives.  Also patches XFCE's helpers.rc so exo-open
+# respects the choice.  Kitty is installed on demand if selected.
+
+select_default_terminal() {
+    info "Default terminal emulator selection:"
+    echo ""
+
+    # Detect current default
+    local current_bin=""
+    if command -v update-alternatives &>/dev/null; then
+        current_bin=$(update-alternatives --query x-terminal-emulator 2>/dev/null \
+            | awk '/^Value:/{print $2}') || true
+    fi
+
+    local kitty_status="" alacritty_status="" xfce_status=""
+
+    if [[ "$current_bin" == "/usr/bin/kitty" ]]; then
+        kitty_status=" ${GREEN}(current)${NC}"
+    elif [[ "$current_bin" == "/usr/bin/alacritty" ]]; then
+        alacritty_status=" ${GREEN}(current)${NC}"
+    elif [[ "$current_bin" == *xfce4-terminal* ]]; then
+        xfce_status=" ${GREEN}(current)${NC}"
+    fi
+
+    echo -e "    ${BOLD}1)${NC}  Kitty (GPU-accelerated)${kitty_status}"
+    echo -e "    ${BOLD}2)${NC}  Alacritty${alacritty_status}"
+    echo -e "    ${BOLD}3)${NC}  Keep current (xfce4-terminal)${xfce_status}"
+    echo ""
+
+    local reply
+    read -rp "$(echo -e "${YELLOW}[????]${NC}  Choose default terminal [1/2/3]: ")" reply
+
+    local chosen_terminal=""
+
+    case "$reply" in
+        1)
+            chosen_terminal="kitty"
+            # Install kitty if missing
+            if ! dpkg -s kitty &>/dev/null; then
+                info "Installing kitty..."
+                install_missing_packages kitty
+            fi
+            if update-alternatives --query x-terminal-emulator 2>/dev/null \
+                    | grep -q '/usr/bin/kitty'; then
+                sudo update-alternatives --set x-terminal-emulator /usr/bin/kitty
+                ok "Default terminal set to Kitty."
+            else
+                warn "Kitty not registered in update-alternatives."
+                warn "Run: sudo update-alternatives --install /usr/bin/x-terminal-emulator x-terminal-emulator /usr/bin/kitty 50"
+            fi
+            ;;
+        2)
+            chosen_terminal="alacritty"
+            # Alacritty is already in TERMINAL_TOOLS, should be installed
+            if ! command -v alacritty &>/dev/null; then
+                warn "Alacritty not found — it should have been installed in step 1."
+                return
+            fi
+            if update-alternatives --query x-terminal-emulator 2>/dev/null \
+                    | grep -q '/usr/bin/alacritty'; then
+                sudo update-alternatives --set x-terminal-emulator /usr/bin/alacritty
+                ok "Default terminal set to Alacritty."
+            else
+                warn "Alacritty not registered in update-alternatives."
+            fi
+            ;;
+        3|"")
+            ok "Keeping current terminal emulator."
+            return
+            ;;
+        *)
+            warn "Invalid selection — keeping current terminal emulator."
+            return
+            ;;
+    esac
+
+    # Patch XFCE helpers.rc so exo-open uses the selected terminal too
+    if [[ -n "$chosen_terminal" ]]; then
+        _patch_xfce_helpers_rc "$chosen_terminal"
+    fi
+}
+
+# Update TerminalEmulator in XFCE's helpers.rc.
+# Guards against sed -i on stow symlinks (same pattern as migrate_tpm).
+_patch_xfce_helpers_rc() {
+    local terminal="$1"
+    local helpers_rc="${HOME}/.config/xfce4/helpers.rc"
+
+    # If helpers.rc is a stow symlink, don't sed it — tell the user to
+    # update the file in the dotfiles repo instead.
+    if [[ -L "$helpers_rc" ]]; then
+        if grep -q "TerminalEmulator=${terminal}" "$helpers_rc" 2>/dev/null; then
+            ok "helpers.rc already set to ${terminal} (stow-managed)."
+        else
+            warn "helpers.rc is managed by stow — set TerminalEmulator=${terminal}"
+            warn "in the dotfiles repo file directly."
+        fi
+        return
+    fi
+
+    if [[ -f "$helpers_rc" ]]; then
+        if grep -q "TerminalEmulator=${terminal}" "$helpers_rc"; then
+            ok "helpers.rc already set to ${terminal}."
+        elif grep -q 'TerminalEmulator=' "$helpers_rc"; then
+            info "Updating TerminalEmulator in helpers.rc..."
+            sed -i "s/TerminalEmulator=.*/TerminalEmulator=${terminal}/" "$helpers_rc"
+            ok "helpers.rc updated."
+        else
+            info "Adding TerminalEmulator to helpers.rc..."
+            echo "TerminalEmulator=${terminal}" >> "$helpers_rc"
+            ok "helpers.rc updated."
+        fi
+    else
+        # No helpers.rc yet — create it
+        local helpers_dir
+        helpers_dir=$(dirname "$helpers_rc")
+        if [[ -d "$helpers_dir" ]]; then
+            info "Creating helpers.rc with TerminalEmulator=${terminal}..."
+            echo "TerminalEmulator=${terminal}" > "$helpers_rc"
+            ok "helpers.rc created."
+        fi
+    fi
 }
 
 # -- Neovim from GitHub releases ---------------------------------------------
@@ -750,49 +924,6 @@ install_treesitter_cli() {
     info "Installing tree-sitter-cli globally via npm..."
     sudo npm install -g tree-sitter-cli
     ok "tree-sitter-cli installed."
-}
-
-# -- Brave browser policy -----------------------------------------------------
-# Deploys managed policy from dotfiles to /etc/brave/policies/managed/.
-# Brave reads this at startup — policies appear at brave://policy.
-# Source lives in the dotfiles repo at .config/brave/settings.json
-# so it's version-controlled, but the target is a system path (needs sudo).
-
-install_brave_policy() {
-    local src="${DOTFILES_DIR}/.config/brave/settings.json"
-    local dest_dir="/etc/brave/policies/managed"
-    local dest="${dest_dir}/settings.json"
-
-    if ! command -v brave-browser &>/dev/null; then
-        return
-    fi
-
-    if [[ ! -f "$src" ]]; then
-        warn "Brave policy source not found at ${src}, skipping."
-        return
-    fi
-
-    # Validate JSON before deploying
-    if command -v python3 &>/dev/null; then
-        if ! python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$src" 2>/dev/null; then
-            err "Invalid JSON in ${src} — fix before deploying."
-            return
-        fi
-    fi
-
-    # Skip if already deployed and identical
-    if [[ -f "$dest" ]] && cmp -s "$src" "$dest"; then
-        ok "Brave policy already up to date."
-        return
-    fi
-
-    info "Installing Brave policy..."
-    sudo mkdir -p "$dest_dir"
-    sudo cp "$src" "$dest"
-    sudo chmod 644 "$dest"
-    ok "Brave policy installed to ${dest}."
-    info "Verify at: brave://policy"
-    warn "GTK theme and NTP layout must be set manually in brave://settings"
 }
 
 # -- Nerd Fonts from GitHub releases ------------------------------------------
@@ -1237,7 +1368,9 @@ _build_stow_conflict_paths() {
         # check the top-level directory — if the whole dir is a real
         # dir with non-symlink content, it's a conflict.
         # Also check the file itself for top-level dotfiles (.bashrc, etc.).
-        # f1-2 gives: .config/nvim, .tmux/plugins, etc.
+        # For .config/X paths, the meaningful conflict unit is .config/X
+        # (e.g. .config/nvim, not .config/nvim/lua).  cut -d'/' -f1-2
+        # handles this correctly for both .config/* and top-level paths.
         local top_dir
         top_dir=$(echo "$rel_path" | cut -d'/' -f1-2)
 
@@ -1498,10 +1631,16 @@ install_julia() {
     fi
 
     info "Installing Julia via juliaup (user-level)..."
-    # JULIAUP_INIT_PATH=no prevents the installer from appending hardcoded
-    # PATH blocks to .bashrc/.profile — the dotfiles already handle PATH
-    # portably, and writing through stow symlinks would pollute the repo.
-    JULIAUP_INIT_PATH=no curl -fsSL "$JULIA_INSTALL_SCRIPT" | sh -s -- --yes
+    # juliaup installer — installs to ~/.juliaup, adds to PATH
+    curl -fsSL "$JULIA_INSTALL_SCRIPT" | sh -s -- --yes
+
+    # juliaup's installer ignores JULIAUP_INIT_PATH=no and writes hardcoded
+    # /home/<user>/.juliaup/bin paths through stow symlinks into the repo
+    # source files (.bashrc, .profile).  Revert the damage immediately.
+    if [[ -d "${DOTFILES_DIR}/.git" ]]; then
+        info "Reverting juliaup modifications to dotfiles..."
+        git -C "$DOTFILES_DIR" checkout -- .bashrc .profile 2>/dev/null || true
+    fi
 
     # Source the updated PATH so julia is available for the rest of this script
     export PATH="${HOME}/.juliaup/bin:${PATH}"
@@ -1606,119 +1745,6 @@ EOF
 # Main
 # =============================================================================
 
-# -- Upfront Q&A — collect all choices before executing -----------------------
-
-collect_choices() {
-    # 1. Desktop environment / window manager
-    info "--- Desktop Environment ---"
-    echo ""
-
-    # Show installed status but always let the user choose
-    local i3_status="" xfce_status=""
-    command -v i3            &>/dev/null && i3_status=" ${GREEN}(installed)${NC}"
-    command -v xfce4-session &>/dev/null && xfce_status=" ${GREEN}(installed)${NC}"
-
-    echo -e "    ${BOLD}1)${NC}  i3 (tiling WM, console login → startx)${i3_status}"
-    echo -e "    ${BOLD}2)${NC}  Xfce4 (full desktop — required for Citrix VDI)${xfce_status}"
-    echo -e "    ${BOLD}3)${NC}  Both (i3 + Xfce4)"
-    echo -e "    ${BOLD}0)${NC}  None — terminal tools and editors only"
-    echo ""
-
-    local de_reply
-    while true; do
-        read -rp "$(echo -e "${YELLOW}[????]${NC}  Select desktop environment [0-3]: ")" de_reply
-        case "$de_reply" in
-            0) ok "Skipping DE — will install terminal tools and editors only." ; break ;;
-            1) OPT_WITH_I3=true   ; ok "i3 selected." ; break ;;
-            2) OPT_WITH_XFCE=true ; ok "Xfce4 selected." ; break ;;
-            3) OPT_WITH_I3=true ; OPT_WITH_XFCE=true
-               ok "Both i3 and Xfce4 selected." ; break ;;
-            *) echo "  Please enter 0, 1, 2, or 3." ;;
-        esac
-    done
-    echo ""
-
-    # 2. Optional packages (interactive menu — selection only, no install yet)
-    info "--- Optional Packages ---"
-    select_optional_packages
-    echo ""
-
-    # Auto-detect already-installed tools so re-runs maintain them
-    # even if the user skips the optional selection prompt.
-    # Note: i3/xfce are NOT auto-detected here — the DE choice is explicit.
-    command -v nvim         &>/dev/null && OPT_WITH_NEOVIM=true
-    command -v emacs        &>/dev/null && OPT_WITH_EMACS=true
-    command -v tmux         &>/dev/null && OPT_WITH_TMUX=true
-    command -v alacritty    &>/dev/null && OPT_WITH_ALACRITTY=true
-    command -v kitty        &>/dev/null && OPT_WITH_KITTY=true
-
-    # 3. Remove lightdm (only relevant with i3-only — not with Xfce or both)
-    if [[ "$OPT_WITH_I3" == true && "$OPT_WITH_XFCE" != true ]]; then
-        if dpkg -s lightdm &>/dev/null; then
-            info "--- Display Manager ---"
-            info "lightdm is installed. i3-only setup uses console login → startx."
-            if ask_yes_no "Remove lightdm and lightdm-gtk-greeter?"; then
-                OPT_REMOVE_LIGHTDM=true
-            else
-                warn "Keeping lightdm. Console login via startx will still be configured,"
-                warn "but lightdm may start instead on boot."
-            fi
-            echo ""
-        fi
-    fi
-
-    # 4. HiDPI (only with i3 and --hidpi flag)
-    if [[ "$OPT_HIDPI" == true && "$OPT_WITH_I3" == true ]]; then
-        info "--- HiDPI ---"
-        if detect_hidpi; then
-            info "HiDPI display detected."
-            if ask_yes_no "Apply HiDPI fixes (GRUB font + xrandr scaling)?"; then
-                OPT_DO_HIDPI=true
-            fi
-        else
-            info "No HiDPI display detected."
-            if ask_yes_no "Apply HiDPI fixes anyway?"; then
-                OPT_DO_HIDPI=true
-            fi
-        fi
-        echo ""
-    fi
-
-    # -- Summary of choices --
-    echo ""
-    info "--- Selection Summary ---"
-    _choice_line "i3"          "$OPT_WITH_I3"
-    _choice_line "Xfce4"       "$OPT_WITH_XFCE"
-    _choice_line "Alacritty"   "$OPT_WITH_ALACRITTY"
-    _choice_line "Kitty"       "$OPT_WITH_KITTY"
-    _choice_line "Tmux"        "$OPT_WITH_TMUX"
-    _choice_line "Neovim"      "$OPT_WITH_NEOVIM"
-    _choice_line "Emacs+Doom"  "$OPT_WITH_EMACS"
-    if [[ "$OPT_WITH_I3" == true ]]; then
-        _choice_line "HiDPI"   "$OPT_DO_HIDPI"
-    fi
-    echo ""
-
-    if ! ask_yes_no "Proceed with installation?"; then
-        ok "Aborted."
-        exit 0
-    fi
-    echo ""
-}
-
-_choice_line() {
-    local label="$1" enabled="$2"
-    if [[ "$enabled" == true ]]; then
-        echo -e "    ${GREEN}✓${NC}  ${label}"
-    else
-        echo -e "    ${RED}✗${NC}  ${label}"
-    fi
-}
-
-# =============================================================================
-# Main
-# =============================================================================
-
 main() {
     parse_args "$@"
 
@@ -1778,50 +1804,63 @@ main() {
 
     echo ""
     echo "==========================================="
-    echo "  Debian 13 (Trixie) — Setup Script        "
+    echo "  Debian 13 (Trixie) — i3wm Setup Script  "
     echo "==========================================="
     echo ""
 
     need_root
 
-    # ── Phase 1: Collect all choices upfront ─────────────────────────────────
-    collect_choices
+    # -- Phase 1: Gather interactive choices (no apt calls) -------------------
+    # Repo setup functions (Brave, VS Code) need curl, which may not be
+    # installed yet on a fresh system.  All Q&A happens first, then packages.
 
-    # ── Phase 2: Execute (no more interactive prompts) ───────────────────────
-
-    # 1. Base Debian packages (always installed)
-    info "--- Base Packages ---"
-    install_missing_packages "${BASE_PACKAGES[@]}"
+    # 1. Desktop environment / window manager
+    info "--- Desktop Selection ---"
+    select_desktop
     echo ""
 
-    # 2. DE/WM-specific packages (conditional)
-    if [[ "$OPT_WITH_I3" == true ]]; then
+    # 2. Optional packages (Q&A only — records selections, defers install)
+    info "--- Optional Packages ---"
+    select_optional_packages
+    echo ""
+
+    # -- Phase 2: Install packages --------------------------------------------
+
+    # 3. Core Debian packages (always installed regardless of DE choice)
+    info "--- Debian Packages ---"
+    install_missing_packages "${ALL_PACKAGES[@]}"
+    echo ""
+
+    # 4. Desktop-specific packages (conditional on DE choice)
+    if [[ "$OPT_DESKTOP" == "i3" || "$OPT_DESKTOP" == "both" ]]; then
         info "--- i3 Packages ---"
         install_missing_packages "${I3_PACKAGES[@]}"
         echo ""
     fi
-    if [[ "$OPT_WITH_XFCE" == true ]]; then
-        info "--- Xfce4 Packages ---"
+    if [[ "$OPT_DESKTOP" == "xfce" || "$OPT_DESKTOP" == "both" ]]; then
+        info "--- Xfce Packages ---"
         install_missing_packages "${XFCE_PACKAGES[@]}"
         echo ""
     fi
 
-    # 3. Non-virtual optional packages (Brave, VS Code, Citrix, etc.)
-    #    Repo setup functions (curl, gpg) run here — after base packages.
+    # 5. Selected optional packages (repos + apt — curl now available)
+    info "--- Install Selected Optional Packages ---"
     install_selected_optional_packages
     echo ""
 
-    # 4. Optional tool dependencies (apt packages for selected tools)
-    if [[ "$OPT_WITH_ALACRITTY" == true ]]; then
-        info "--- Alacritty ---"
-        install_missing_packages "${ALACRITTY_DEPS[@]}"
-        echo ""
-    fi
-    if [[ "$OPT_WITH_KITTY" == true ]]; then
-        info "--- Kitty ---"
-        install_missing_packages "${KITTY_DEPS[@]}"
-        echo ""
-    fi
+    # 6. Default terminal emulator (can install kitty now that apt works)
+    info "--- Default Terminal ---"
+    select_default_terminal
+    echo ""
+
+    # Auto-detect already-installed editors/tools so re-runs still maintain
+    # them even if the user skips the optional selection prompt.
+    # NOTE: only editors/tools — DE selection is always explicit.
+    command -v nvim  &>/dev/null && OPT_WITH_NEOVIM=true
+    command -v emacs &>/dev/null && OPT_WITH_EMACS=true
+    command -v tmux  &>/dev/null && OPT_WITH_TMUX=true
+
+    # 7. Optional tool dependencies (apt packages for selected tools)
     if [[ "$OPT_WITH_TMUX" == true ]]; then
         info "--- Tmux Dependencies ---"
         install_missing_packages "${TMUX_DEPS[@]}"
@@ -1838,17 +1877,20 @@ main() {
         echo ""
     fi
 
-    # 4. Remove lightdm (decision was already made in collect_choices)
-    if [[ "$OPT_REMOVE_LIGHTDM" == true ]]; then
+    # 8. Remove lightdm (only for i3-standalone — Xfce needs it)
+    if [[ "$OPT_DESKTOP" == "i3" || "$OPT_DESKTOP" == "none" ]]; then
         info "--- Remove Display Manager ---"
-        info "Removing lightdm display manager..."
-        sudo apt remove --purge -y lightdm lightdm-gtk-greeter 2>/dev/null || true
-        sudo apt autoremove --purge -y
-        ok "lightdm removed."
+        remove_lightdm
+        echo ""
+    elif [[ "$OPT_DESKTOP" == "both" ]]; then
+        info "--- Display Manager ---"
+        ok "Keeping lightdm (needed for Xfce sessions)."
         echo ""
     fi
 
-    # 5. Neovim
+    # -- Phase 3: Tools and configuration -------------------------------------
+
+    # 9. Neovim
     if [[ "$OPT_WITH_NEOVIM" == true ]]; then
         info "--- Neovim (GitHub Release) ---"
         if [[ "$OPT_NVIM_UPDATE" == true ]]; then
@@ -1864,65 +1906,85 @@ main() {
         echo ""
     fi
 
-    # 6. Nerd Fonts
+    # 10. Nerd Fonts
     info "--- Nerd Fonts ---"
     install_nerd_fonts
     echo ""
 
-    # 7. Monaspace fonts
+    # 11. Monaspace fonts
     info "--- Monaspace Fonts ---"
     install_monaspace_fonts
     echo ""
 
-    # 8. Tmux plugin manager
+    # 12. Tmux plugin manager
     if [[ "$OPT_WITH_TMUX" == true ]]; then
         info "--- Tmux Plugin Manager ---"
         migrate_tpm
         echo ""
     fi
 
-    # 9. HiDPI setup (decision was already made in collect_choices)
-    if [[ "$OPT_DO_HIDPI" == true ]]; then
-        info "--- HiDPI ---"
-        setup_hidpi_grub
-        setup_hidpi_desktop
-        echo ""
-    fi
+    # 13. HiDPI setup
+    info "--- HiDPI ---"
+    if [[ "$OPT_HIDPI" == true ]]; then
+        local do_hidpi=false
 
-    # 10. Stow pre-cleanup
+        if detect_hidpi; then
+            info "HiDPI display detected."
+            if ask_yes_no "Apply HiDPI fixes (GRUB font + xrandr scaling)?"; then
+                do_hidpi=true
+            fi
+        else
+            info "No HiDPI display detected."
+            if ask_yes_no "Apply HiDPI fixes anyway?"; then
+                do_hidpi=true
+            fi
+        fi
+
+        if [[ "$do_hidpi" == true ]]; then
+            setup_hidpi_grub
+            setup_hidpi_desktop
+        else
+            ok "Skipping HiDPI setup."
+        fi
+    else
+        ok "Skipping HiDPI setup (use --hidpi or --install --hidpi to configure)."
+    fi
+    echo ""
+
+    # 14. Stow pre-cleanup
     info "--- Stow Pre-Cleanup ---"
     cleanup_for_stow
     echo ""
 
-    # 11. Deploy dotfiles (stow from this repo)
+    # 15. Deploy dotfiles (stow from this repo)
     info "--- Dotfiles ---"
     deploy_dotfiles
     echo ""
 
-    # 12. Brave browser policy (needs dotfiles for .config/brave/settings.json)
+    # 16. Brave browser policy (after dotfiles — source file is in the repo)
     info "--- Brave Policy ---"
     install_brave_policy
     echo ""
 
-    # 13. Doom Emacs (needs dotfiles for ~/.config/doom/, restarts daemon)
+    # 17. Doom Emacs (needs dotfiles for ~/.config/doom/, restarts daemon)
     if [[ "$OPT_WITH_EMACS" == true ]]; then
         info "--- Doom Emacs ---"
         install_doom_emacs
         echo ""
 
-        # 13. Emacs daemon (enable for next boot — not started now)
+        # 18. Emacs daemon (enable for next boot — not started now)
         info "--- Emacs Daemon ---"
         setup_emacs_daemon
         echo ""
     fi
 
-    # 14. Julia
+    # 19. Julia
     info "--- Julia ---"
     install_julia
     echo ""
 
-    # 15. startx + i3 login (only with i3)
-    if [[ "$OPT_WITH_I3" == true ]]; then
+    # 20. startx + i3 login
+    if [[ "$OPT_DESKTOP" == "i3" || "$OPT_DESKTOP" == "both" || "$OPT_DESKTOP" == "none" ]]; then
         info "--- Console Login → i3 ---"
         setup_startx_login
         echo ""
@@ -1934,21 +1996,19 @@ main() {
     ok "Setup complete!"
     echo ""
     info "Post-install checklist:"
-    if [[ "$OPT_WITH_I3" == true ]]; then
+    if [[ "$OPT_DESKTOP" == "i3" || "$OPT_DESKTOP" == "both" || "$OPT_DESKTOP" == "none" ]]; then
         echo "  • If this is a fresh install, reboot to use console login → startx → i3"
         echo "  • Verify i3 is the default: ${BOLD}sudo update-alternatives --config x-session-manager${NC}"
     fi
     echo "  • Set GTK theme/icons/fonts: ${BOLD}lxappearance${NC}"
     echo "  • Adjust compositor effects: ${BOLD}picom-conf${NC}"
+    echo "  • Verify default terminal: ${BOLD}update-alternatives --display x-terminal-emulator${NC}"
     if [[ "$OPT_WITH_TMUX" == true ]]; then
         echo "  • Install tmux plugins (in a tmux session): ${BOLD}prefix + I${NC}"
     fi
     echo "  • Check Julia: ${BOLD}juliaup status${NC}"
     if [[ "$OPT_WITH_EMACS" == true ]]; then
         echo "  • Emacs daemon: ${BOLD}systemctl --user status emacs${NC}"
-    fi
-    if command -v brave-browser &>/dev/null; then
-        echo "  • Verify Brave policies: ${BOLD}brave://policy${NC}"
     fi
     echo "  • Run ${BOLD}./setup-debian13.sh${NC} for all available options"
     echo ""
