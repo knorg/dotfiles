@@ -36,9 +36,6 @@
         <property name="startup-notify" type="bool" value="true"/>
       </property>
       <property name="&lt;Alt&gt;Print" type="string" value="xfce4-screenshooter -w"/>
-      <property name="&lt;Super&gt;r" type="string" value="xfce4-appfinder -c">
-        <property name="startup-notify" type="bool" value="true"/>
-      </property>
       <property name="XF86WWW" type="string" value="exo-open --launch WebBrowser"/>
       <property name="XF86Mail" type="string" value="exo-open --launch MailReader"/>
       <property name="&lt;Alt&gt;F3" type="string" value="xfce4-appfinder">
@@ -126,7 +123,6 @@
     </property>
     <property name="custom" type="empty">
       <property name="&lt;Super&gt;KP_Down" type="string" value="tile_down_key"/>
-      <property name="&lt;Alt&gt;F4" type="string" value="close_window_key"/>
       <property name="&lt;Primary&gt;&lt;Alt&gt;Down" type="string" value="down_workspace_key"/>
       <property name="&lt;Super&gt;KP_Up" type="string" value="tile_up_key"/>
       <property name="&lt;Primary&gt;&lt;Alt&gt;End" type="string" value="move_window_next_workspace_key"/>
@@ -139,11 +135,9 @@
       <property name="&lt;Primary&gt;&lt;Shift&gt;&lt;Alt&gt;Right" type="string" value="move_window_right_key"/>
       <property name="&lt;Primary&gt;&lt;Alt&gt;Right" type="string" value="right_workspace_key"/>
       <property name="&lt;Alt&gt;F6" type="string" value="stick_window_key"/>
-      <property name="&lt;Alt&gt;F10" type="string" value="maximize_window_key"/>
       <property name="&lt;Super&gt;Tab" type="string" value="switch_window_key"/>
       <property name="&lt;Primary&gt;&lt;Alt&gt;d" type="string" value="show_desktop_key"/>
       <property name="&lt;Super&gt;KP_Page_Up" type="string" value="tile_up_right_key"/>
-      <property name="&lt;Alt&gt;F7" type="string" value="move_window_key"/>
       <property name="Up" type="string" value="up_key"/>
       <property name="&lt;Alt&gt;F11" type="string" value="fullscreen_key"/>
       <property name="&lt;Alt&gt;space" type="string" value="popup_menu_key"/>
@@ -157,7 +151,6 @@
       <property name="&lt;Primary&gt;&lt;Alt&gt;Left" type="string" value="left_workspace_key"/>
       <property name="&lt;Alt&gt;F12" type="string" value="above_key"/>
       <property name="&lt;Primary&gt;&lt;Shift&gt;&lt;Alt&gt;Up" type="string" value="move_window_up_key"/>
-      <property name="&lt;Alt&gt;F8" type="string" value="resize_window_key"/>
       <property name="&lt;Super&gt;KP_End" type="string" value="tile_down_left_key"/>
       <property name="&lt;Primary&gt;&lt;Alt&gt;Up" type="string" value="up_workspace_key"/>
       <property name="&lt;Alt&gt;F9" type="string" value="hide_window_key"/>
@@ -183,6 +176,10 @@
       <property name="&lt;Primary&gt;&lt;Super&gt;8" type="string" value="move_window_workspace_8_key"/>
       <property name="&lt;Primary&gt;&lt;Super&gt;9" type="string" value="move_window_workspace_9_key"/>
       <property name="&lt;Primary&gt;&lt;Super&gt;0" type="string" value="move_window_workspace_10_key"/>
+      <property name="&lt;Super&gt;f" type="string" value="maximize_window_key"/>
+      <property name="&lt;Super&gt;r" type="string" value="resize_window_key"/>
+      <property name="&lt;Alt&gt;&lt;Super&gt;Tab" type="string" value="switch_application_key"/>
+      <property name="&lt;Super&gt;q" type="string" value="close_window_key"/>
     </property>
   </property>
   <property name="providers" type="array">
