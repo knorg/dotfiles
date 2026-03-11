@@ -53,6 +53,11 @@ OPT_WITH_NEOVIM=false
 OPT_WITH_EMACS=false
 OPT_WITH_TMUX=false
 
+# -- Phase 1 decisions (recorded upfront, applied later) ---------------------
+OPT_DEFAULT_TERMINAL=""   # "kitty" | "alacritty" | "" (keep current)
+OPT_REMOVE_LIGHTDM=false  # always asked, regardless of desktop choice
+OPT_DO_HIDPI=false         # recorded in Phase 1 when --hidpi is set
+
 # -- Selected optional packages (populated by select, consumed by install) ---
 SELECTED_OPT_PKGS=()
 SELECTED_OPT_REPOS=()
@@ -238,6 +243,7 @@ CORE_PACKAGES=(
 
 TERMINAL_TOOLS=(
     alacritty
+    kitty
     mc
     btop
     eza
@@ -256,6 +262,9 @@ I3_PACKAGES=(
 XFCE_PACKAGES=(
     xfce4
     xfce4-goodies
+)
+
+LIGHTDM_PACKAGES=(
     lightdm
     lightdm-gtk-greeter
 )
@@ -442,7 +451,7 @@ _setup_citrix_workspace() {
         info "Download the .deb from:"
         info "  https://www.citrix.com/downloads/workspace-app/linux/workspace-app-for-linux-latest.html"
         info "Then re-run the script."
-        return 1
+        return
     fi
 
     info "Installing Citrix Workspace from ${deb}..."
@@ -663,31 +672,47 @@ _is_pkg_installed() {
 }
 
 # -- Remove lightdm -----------------------------------------------------------
+# Phase 1: ask.  Phase 2: execute.
 
-remove_lightdm() {
-    if dpkg -s lightdm &>/dev/null; then
-        info "lightdm display manager is installed."
-        info "This setup uses console login → startx → i3 (no display manager)."
-        if ask_yes_no "Remove lightdm and lightdm-gtk-greeter?"; then
-            info "Removing lightdm display manager..."
-            sudo apt remove --purge -y lightdm lightdm-gtk-greeter 2>/dev/null || true
-            sudo apt autoremove --purge -y
-            ok "lightdm removed."
-        else
-            warn "Keeping lightdm. Console login via startx will still be configured,"
-            warn "but lightdm may start instead on boot."
-        fi
-    else
+ask_remove_lightdm() {
+    if ! dpkg -s lightdm &>/dev/null; then
         ok "lightdm not installed."
+        return
+    fi
+
+    info "lightdm display manager is installed."
+    info "This setup uses console login → startx → i3 (no display manager)."
+    if ask_yes_no "Remove lightdm and lightdm-gtk-greeter?"; then
+        OPT_REMOVE_LIGHTDM=true
+        ok "lightdm will be removed."
+    else
+        OPT_REMOVE_LIGHTDM=false
+        warn "Keeping lightdm."
     fi
 }
 
-# -- Default terminal emulator ------------------------------------------------
-# Let the user pick which terminal is the system default via
-# update-alternatives.  Also patches XFCE's helpers.rc so exo-open
-# respects the choice.  Kitty is installed on demand if selected.
+remove_lightdm() {
+    if [[ "$OPT_REMOVE_LIGHTDM" != true ]]; then
+        return
+    fi
 
-select_default_terminal() {
+    if ! dpkg -s lightdm &>/dev/null; then
+        ok "lightdm already removed."
+        return
+    fi
+
+    info "Removing lightdm display manager..."
+    sudo apt remove --purge -y lightdm lightdm-gtk-greeter 2>/dev/null || true
+    sudo apt autoremove --purge -y
+    ok "lightdm removed."
+}
+
+# -- Default terminal emulator ------------------------------------------------
+# Phase 1: ask.  Phase 2: apply.
+# Kitty and Alacritty are both in TERMINAL_TOOLS — always installed.
+# Also patches XFCE's helpers.rc so exo-open respects the choice.
+
+ask_default_terminal() {
     info "Default terminal emulator selection:"
     echo ""
 
@@ -698,72 +723,57 @@ select_default_terminal() {
             | awk '/^Value:/{print $2}') || true
     fi
 
-    local kitty_status="" alacritty_status="" xfce_status=""
+    local kitty_status="" alacritty_status="" keep_status=""
 
     if [[ "$current_bin" == "/usr/bin/kitty" ]]; then
         kitty_status=" ${GREEN}(current)${NC}"
     elif [[ "$current_bin" == "/usr/bin/alacritty" ]]; then
         alacritty_status=" ${GREEN}(current)${NC}"
-    elif [[ "$current_bin" == *xfce4-terminal* ]]; then
-        xfce_status=" ${GREEN}(current)${NC}"
     fi
+    [[ -n "$current_bin" ]] && keep_status=" ${GREEN}(current: $(basename "$current_bin"))${NC}"
 
     echo -e "    ${BOLD}1)${NC}  Kitty (GPU-accelerated)${kitty_status}"
     echo -e "    ${BOLD}2)${NC}  Alacritty${alacritty_status}"
-    echo -e "    ${BOLD}3)${NC}  Keep current (xfce4-terminal)${xfce_status}"
+    echo -e "    ${BOLD}3)${NC}  Keep current${keep_status}"
     echo ""
 
     local reply
     read -rp "$(echo -e "${YELLOW}[????]${NC}  Choose default terminal [1/2/3]: ")" reply
 
-    local chosen_terminal=""
-
     case "$reply" in
-        1)
-            chosen_terminal="kitty"
-            # Install kitty if missing
-            if ! dpkg -s kitty &>/dev/null; then
-                info "Installing kitty..."
-                install_missing_packages kitty
-            fi
-            if update-alternatives --query x-terminal-emulator 2>/dev/null \
-                    | grep -q '/usr/bin/kitty'; then
-                sudo update-alternatives --set x-terminal-emulator /usr/bin/kitty
-                ok "Default terminal set to Kitty."
-            else
-                warn "Kitty not registered in update-alternatives."
-                warn "Run: sudo update-alternatives --install /usr/bin/x-terminal-emulator x-terminal-emulator /usr/bin/kitty 50"
-            fi
-            ;;
-        2)
-            chosen_terminal="alacritty"
-            # Alacritty is already in TERMINAL_TOOLS, should be installed
-            if ! command -v alacritty &>/dev/null; then
-                warn "Alacritty not found — it should have been installed in step 1."
-                return
-            fi
-            if update-alternatives --query x-terminal-emulator 2>/dev/null \
-                    | grep -q '/usr/bin/alacritty'; then
-                sudo update-alternatives --set x-terminal-emulator /usr/bin/alacritty
-                ok "Default terminal set to Alacritty."
-            else
-                warn "Alacritty not registered in update-alternatives."
-            fi
-            ;;
-        3|"")
-            ok "Keeping current terminal emulator."
-            return
-            ;;
-        *)
-            warn "Invalid selection — keeping current terminal emulator."
-            return
-            ;;
+        1)   OPT_DEFAULT_TERMINAL="kitty"    ; ok "Kitty will be set as default." ;;
+        2)   OPT_DEFAULT_TERMINAL="alacritty" ; ok "Alacritty will be set as default." ;;
+        3|"") OPT_DEFAULT_TERMINAL=""          ; ok "Keeping current terminal emulator." ;;
+        *)   OPT_DEFAULT_TERMINAL=""           ; warn "Invalid selection — keeping current." ;;
     esac
+}
+
+apply_default_terminal() {
+    if [[ -z "$OPT_DEFAULT_TERMINAL" ]]; then
+        return
+    fi
+
+    local chosen="$OPT_DEFAULT_TERMINAL"
+    local bin_path="/usr/bin/${chosen}"
+
+    if ! command -v "$chosen" &>/dev/null; then
+        warn "${chosen} not found — it should have been installed in the package step."
+        return
+    fi
+
+    if update-alternatives --query x-terminal-emulator 2>/dev/null \
+            | grep -q "$bin_path"; then
+        sudo update-alternatives --set x-terminal-emulator "$bin_path"
+        ok "Default terminal set to ${chosen}."
+    else
+        warn "${chosen} not registered in update-alternatives."
+        if [[ "$chosen" == "kitty" ]]; then
+            warn "Run: sudo update-alternatives --install /usr/bin/x-terminal-emulator x-terminal-emulator /usr/bin/kitty 50"
+        fi
+    fi
 
     # Patch XFCE helpers.rc so exo-open uses the selected terminal too
-    if [[ -n "$chosen_terminal" ]]; then
-        _patch_xfce_helpers_rc "$chosen_terminal"
-    fi
+    _patch_xfce_helpers_rc "$chosen"
 }
 
 # Update TerminalEmulator in XFCE's helpers.rc.
@@ -847,8 +857,8 @@ update_neovim() {
     current_version=$(get_nvim_current_version)
 
     if [[ -z "$latest_version" ]]; then
-        err "Could not determine latest Neovim version."
-        return 1
+        warn "Could not determine latest Neovim version. Skipping update."
+        return
     fi
 
     if [[ "$current_version" == "$latest_version" ]]; then
@@ -1354,34 +1364,16 @@ revert_hidpi() {
 # Scans the actual dotfiles repo to determine which paths would conflict.
 
 # Build the conflict list dynamically from what's actually in the repo.
-# Stow with --no-folding deploys individual file symlinks, so we check
-# each file's target path under $HOME for real (non-symlink) conflicts.
+# With --no-folding, stow deploys individual file symlinks inside real
+# directories.  A conflict is a real (non-symlink) file at the exact
+# target path — we check each file, not directories.
 _build_stow_conflict_paths() {
-    local -a paths=()
+    STOW_CONFLICT_PATHS=()
 
     # Find all files in the dotfiles dir that stow would deploy.
     # Exclude repo-level files that aren't stow targets.
     while IFS= read -r -d '' rel_path; do
-        local target="${HOME}/${rel_path}"
-
-        # For files inside directories (e.g. .config/i3/config),
-        # check the top-level directory — if the whole dir is a real
-        # dir with non-symlink content, it's a conflict.
-        # Also check the file itself for top-level dotfiles (.bashrc, etc.).
-        # For .config/X paths, the meaningful conflict unit is .config/X
-        # (e.g. .config/nvim, not .config/nvim/lua).  cut -d'/' -f1-2
-        # handles this correctly for both .config/* and top-level paths.
-        local top_dir
-        top_dir=$(echo "$rel_path" | cut -d'/' -f1-2)
-
-        local target_dir="${HOME}/${top_dir}"
-
-        # Add the directory (deduplicated later) or the file itself
-        if [[ "$rel_path" == */* ]]; then
-            paths+=("$target_dir")
-        else
-            paths+=("$target")
-        fi
+        STOW_CONFLICT_PATHS+=("${HOME}/${rel_path}")
     done < <(
         cd "$DOTFILES_DIR" && \
         find . -mindepth 1 \
@@ -1391,27 +1383,9 @@ _build_stow_conflict_paths() {
             -not -name 'README.md' \
             -not -name '.gitignore' \
             -not -name '.gitmodules' \
+            -not -name '.stow-local-ignore' \
             -type f -printf '%P\0'
     )
-
-    # Deduplicate
-    local -A seen=()
-    STOW_CONFLICT_PATHS=()
-    for p in "${paths[@]}"; do
-        if [[ -z "${seen[$p]+x}" ]]; then
-            seen[$p]=1
-            STOW_CONFLICT_PATHS+=("$p")
-        fi
-    done
-}
-
-# Check if a directory is already managed by stow (contains symlinks)
-# On a fresh install, default config dirs only contain real files.
-# After stow --no-folding, they contain symlinks to dotfiles.
-_is_stow_managed_dir() {
-    local dir="$1"
-    [[ -d "$dir" ]] || return 1
-    [[ -n "$(find "$dir" -mindepth 1 -maxdepth 1 -type l -print -quit 2>/dev/null)" ]]
 }
 
 cleanup_for_stow() {
@@ -1422,16 +1396,13 @@ cleanup_for_stow() {
     local -a conflicts=()
 
     for path in "${STOW_CONFLICT_PATHS[@]}"; do
-        # Skip if path doesn't exist or is already a symlink
+        # Skip if target doesn't exist — no conflict
         [[ -e "$path" ]] || continue
+
+        # Skip if already a symlink — stow will restow it
         [[ -L "$path" ]] && continue
 
-        # With --no-folding, stow creates real dirs with symlinked files inside.
-        # If the dir is already stow-managed, it's not a conflict.
-        if [[ -d "$path" ]] && _is_stow_managed_dir "$path"; then
-            continue
-        fi
-
+        # Real (non-symlink) file at the target path → conflict
         conflicts+=("$path")
     done
 
@@ -1440,9 +1411,9 @@ cleanup_for_stow() {
         return
     fi
 
-    info "Found ${#conflicts[@]} path(s) that would block stow:"
+    info "Found ${#conflicts[@]} file(s) that would block stow:"
     for c in "${conflicts[@]}"; do
-        echo "         $c"
+        echo "         ${c#"${HOME}"/}"
     done
 
     if ! ask_yes_no "Back up and remove these so stow can create symlinks?"; then
@@ -1810,7 +1781,9 @@ main() {
 
     need_root
 
-    # -- Phase 1: Gather interactive choices (no apt calls) -------------------
+    # =========================================================================
+    # Phase 1: Gather ALL interactive choices (no apt calls, no side effects)
+    # =========================================================================
     # Repo setup functions (Brave, VS Code) need curl, which may not be
     # installed yet on a fresh system.  All Q&A happens first, then packages.
 
@@ -1824,15 +1797,48 @@ main() {
     select_optional_packages
     echo ""
 
-    # -- Phase 2: Install packages --------------------------------------------
+    # 3. Default terminal emulator (Q&A only — records choice)
+    info "--- Default Terminal ---"
+    ask_default_terminal
+    echo ""
 
-    # 3. Core Debian packages (always installed regardless of DE choice)
+    # 4. Remove lightdm? (always asked regardless of desktop choice)
+    info "--- Display Manager ---"
+    ask_remove_lightdm
+    echo ""
+
+    # 5. HiDPI (Q&A only if --hidpi flag was given)
+    if [[ "$OPT_HIDPI" == true ]]; then
+        info "--- HiDPI ---"
+        if detect_hidpi; then
+            info "HiDPI display detected."
+            if ask_yes_no "Apply HiDPI fixes (GRUB font + xrandr scaling)?"; then
+                OPT_DO_HIDPI=true
+            fi
+        else
+            info "No HiDPI display detected."
+            if ask_yes_no "Apply HiDPI fixes anyway?"; then
+                OPT_DO_HIDPI=true
+            fi
+        fi
+        echo ""
+    fi
+
+    echo ""
+    info "All questions answered — installing and configuring..."
+    echo ""
+
+    # =========================================================================
+    # Phase 2: Install packages (no interaction)
+    # =========================================================================
+
+    # 6. Core Debian packages (always installed regardless of DE choice)
     info "--- Debian Packages ---"
     install_missing_packages "${ALL_PACKAGES[@]}"
     echo ""
 
-    # 4. Desktop-specific packages (conditional on DE choice)
-    if [[ "$OPT_DESKTOP" == "i3" || "$OPT_DESKTOP" == "both" ]]; then
+    # 7. Desktop-specific packages (conditional on DE choice)
+    if [[ "$OPT_DESKTOP" == "i3" ]]; then
         info "--- i3 Packages ---"
         install_missing_packages "${I3_PACKAGES[@]}"
         echo ""
@@ -1842,15 +1848,27 @@ main() {
         install_missing_packages "${XFCE_PACKAGES[@]}"
         echo ""
     fi
+    if [[ "$OPT_DESKTOP" == "both" ]]; then
+        info "--- i3 Packages ---"
+        install_missing_packages "${I3_PACKAGES[@]}"
+        echo ""
+    fi
 
-    # 5. Selected optional packages (repos + apt — curl now available)
+    # LightDM (only for Xfce desktops, and only if user didn't choose to remove it)
+    if [[ "$OPT_DESKTOP" == "xfce" || "$OPT_DESKTOP" == "both" ]]; then
+        if [[ "$OPT_REMOVE_LIGHTDM" != true ]]; then
+            info "--- LightDM ---"
+            install_missing_packages "${LIGHTDM_PACKAGES[@]}"
+            echo ""
+        else
+            ok "Skipping LightDM install (removal was selected)."
+            echo ""
+        fi
+    fi
+
+    # 8. Selected optional packages (repos + apt — curl now available)
     info "--- Install Selected Optional Packages ---"
     install_selected_optional_packages
-    echo ""
-
-    # 6. Default terminal emulator (can install kitty now that apt works)
-    info "--- Default Terminal ---"
-    select_default_terminal
     echo ""
 
     # Auto-detect already-installed editors/tools so re-runs still maintain
@@ -1860,7 +1878,7 @@ main() {
     command -v emacs &>/dev/null && OPT_WITH_EMACS=true
     command -v tmux  &>/dev/null && OPT_WITH_TMUX=true
 
-    # 7. Optional tool dependencies (apt packages for selected tools)
+    # 9. Optional tool dependencies (apt packages for selected tools)
     if [[ "$OPT_WITH_TMUX" == true ]]; then
         info "--- Tmux Dependencies ---"
         install_missing_packages "${TMUX_DEPS[@]}"
@@ -1877,20 +1895,21 @@ main() {
         echo ""
     fi
 
-    # 8. Remove lightdm (only for i3-standalone — Xfce needs it)
-    if [[ "$OPT_DESKTOP" == "i3" || "$OPT_DESKTOP" == "none" ]]; then
-        info "--- Remove Display Manager ---"
-        remove_lightdm
-        echo ""
-    elif [[ "$OPT_DESKTOP" == "both" ]]; then
-        info "--- Display Manager ---"
-        ok "Keeping lightdm (needed for Xfce sessions)."
-        echo ""
-    fi
+    # =========================================================================
+    # Phase 3: Configuration (no interaction except stow cleanup)
+    # =========================================================================
 
-    # -- Phase 3: Tools and configuration -------------------------------------
+    # 10. Apply default terminal choice
+    info "--- Default Terminal ---"
+    apply_default_terminal
+    echo ""
 
-    # 9. Neovim
+    # 11. Remove lightdm (if decided in Phase 1)
+    info "--- Display Manager ---"
+    remove_lightdm
+    echo ""
+
+    # 12. Neovim
     if [[ "$OPT_WITH_NEOVIM" == true ]]; then
         info "--- Neovim (GitHub Release) ---"
         if [[ "$OPT_NVIM_UPDATE" == true ]]; then
@@ -1906,84 +1925,68 @@ main() {
         echo ""
     fi
 
-    # 10. Nerd Fonts
+    # 13. Nerd Fonts
     info "--- Nerd Fonts ---"
     install_nerd_fonts
     echo ""
 
-    # 11. Monaspace fonts
+    # 14. Monaspace fonts
     info "--- Monaspace Fonts ---"
     install_monaspace_fonts
     echo ""
 
-    # 12. Tmux plugin manager
+    # 15. Tmux plugin manager
     if [[ "$OPT_WITH_TMUX" == true ]]; then
         info "--- Tmux Plugin Manager ---"
         migrate_tpm
         echo ""
     fi
 
-    # 13. HiDPI setup
+    # 16. HiDPI setup (if decided in Phase 1)
     info "--- HiDPI ---"
-    if [[ "$OPT_HIDPI" == true ]]; then
-        local do_hidpi=false
-
-        if detect_hidpi; then
-            info "HiDPI display detected."
-            if ask_yes_no "Apply HiDPI fixes (GRUB font + xrandr scaling)?"; then
-                do_hidpi=true
-            fi
-        else
-            info "No HiDPI display detected."
-            if ask_yes_no "Apply HiDPI fixes anyway?"; then
-                do_hidpi=true
-            fi
-        fi
-
-        if [[ "$do_hidpi" == true ]]; then
-            setup_hidpi_grub
-            setup_hidpi_desktop
-        else
-            ok "Skipping HiDPI setup."
-        fi
+    if [[ "$OPT_DO_HIDPI" == true ]]; then
+        setup_hidpi_grub
+        setup_hidpi_desktop
+    elif [[ "$OPT_HIDPI" == true ]]; then
+        ok "Skipping HiDPI setup (declined)."
     else
         ok "Skipping HiDPI setup (use --hidpi or --install --hidpi to configure)."
     fi
     echo ""
 
-    # 14. Stow pre-cleanup
+    # 17. Stow pre-cleanup (EXCEPTION: interactive backup prompt)
     info "--- Stow Pre-Cleanup ---"
     cleanup_for_stow
     echo ""
 
-    # 15. Deploy dotfiles (stow from this repo)
+    # 18. Deploy dotfiles (stow from this repo)
     info "--- Dotfiles ---"
     deploy_dotfiles
     echo ""
 
-    # 16. Brave browser policy (after dotfiles — source file is in the repo)
+    # 19. Brave browser policy (after dotfiles — source file is in the repo)
     info "--- Brave Policy ---"
     install_brave_policy
     echo ""
 
-    # 17. Doom Emacs (needs dotfiles for ~/.config/doom/, restarts daemon)
+    # 20. Doom Emacs (needs dotfiles for ~/.config/doom/, restarts daemon)
     if [[ "$OPT_WITH_EMACS" == true ]]; then
         info "--- Doom Emacs ---"
         install_doom_emacs
         echo ""
 
-        # 18. Emacs daemon (enable for next boot — not started now)
+        # 21. Emacs daemon (enable for next boot — not started now)
         info "--- Emacs Daemon ---"
         setup_emacs_daemon
         echo ""
     fi
 
-    # 19. Julia
+    # 22. Julia
     info "--- Julia ---"
     install_julia
     echo ""
 
-    # 20. startx + i3 login
+    # 23. startx + i3 login
     if [[ "$OPT_DESKTOP" == "i3" || "$OPT_DESKTOP" == "both" || "$OPT_DESKTOP" == "none" ]]; then
         info "--- Console Login → i3 ---"
         setup_startx_login
