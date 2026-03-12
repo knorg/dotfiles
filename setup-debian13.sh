@@ -45,7 +45,7 @@ OPT_HIDPI_REVERT=false
 OPT_HIDPI_HELP=false
 
 # -- Desktop environment selection (set by select_desktop) -------------------
-# Values: "i3" | "xfce" | "both" | "none"
+# Values: "i3" | "xfce" | "none"
 OPT_DESKTOP=""
 
 # -- Editor/tool selection (set by select_optional_packages) -----------------
@@ -54,9 +54,9 @@ OPT_WITH_EMACS=false
 OPT_WITH_TMUX=false
 
 # -- Phase 1 decisions (recorded upfront, applied later) ---------------------
-OPT_DEFAULT_TERMINAL=""   # "kitty" | "alacritty" | "" (keep current)
-OPT_REMOVE_LIGHTDM=false  # always asked, regardless of desktop choice
-OPT_DO_HIDPI=false         # recorded in Phase 1 when --hidpi is set
+OPT_DEFAULT_TERMINAL=""    # path like /usr/bin/kitty, or "" (keep current)
+OPT_REMOVE_LIGHTDM=false   # always asked, regardless of desktop choice
+OPT_DO_HIDPI=false          # recorded in Phase 1 when --hidpi is set
 
 # -- Selected optional packages (populated by select, consumed by install) ---
 SELECTED_OPT_PKGS=()
@@ -359,19 +359,17 @@ select_desktop() {
 
     echo -e "    ${BOLD}1)${NC}  i3wm (tiling WM, no DE)${i3_status}"
     echo -e "    ${BOLD}2)${NC}  Xfce4 (full desktop environment)${xfce_status}"
-    echo -e "    ${BOLD}3)${NC}  Both (i3 + Xfce4)"
     echo -e "    ${BOLD}0)${NC}  Skip — install neither"
     echo ""
 
     local reply
-    read -rp "$(echo -e "${YELLOW}[????]${NC}  Choose desktop [0/1/2/3]: ")" reply
+    read -rp "$(echo -e "${YELLOW}[????]${NC}  Choose desktop [0/1/2]: ")" reply
 
     case "$reply" in
-        1)   OPT_DESKTOP="i3"   ; ok "i3wm selected." ;;
-        2)   OPT_DESKTOP="xfce" ; ok "Xfce4 selected." ;;
-        3)   OPT_DESKTOP="both" ; ok "i3 + Xfce4 selected." ;;
+        1)    OPT_DESKTOP="i3"   ; ok "i3wm selected." ;;
+        2)    OPT_DESKTOP="xfce" ; ok "Xfce4 selected." ;;
         0|"") OPT_DESKTOP="none" ; ok "Skipping desktop packages." ;;
-        *)   OPT_DESKTOP="none" ; warn "Invalid selection — skipping desktop packages." ;;
+        *)    OPT_DESKTOP="none" ; warn "Invalid selection — skipping desktop packages." ;;
     esac
 }
 
@@ -708,9 +706,10 @@ remove_lightdm() {
 }
 
 # -- Default terminal emulator ------------------------------------------------
-# Phase 1: ask.  Phase 2: apply.
-# Kitty and Alacritty are both in TERMINAL_TOOLS — always installed.
-# Also patches XFCE's helpers.rc so exo-open respects the choice.
+# Phase 1: ask (detects installed terminals dynamically).
+# Phase 3: apply via update-alternatives + XFCE helpers.rc.
+# Kitty and Alacritty are in TERMINAL_TOOLS — always installed.
+# xfce4-terminal comes with xfce4-goodies.  Konsole is optional.
 
 ask_default_terminal() {
     info "Default terminal emulator selection:"
@@ -723,29 +722,63 @@ ask_default_terminal() {
             | awk '/^Value:/{print $2}') || true
     fi
 
-    local kitty_status="" alacritty_status="" keep_status=""
+    # Build list of installed terminals dynamically
+    # Each entry: "display_name|binary_path"
+    local -a terminals=()
 
-    if [[ "$current_bin" == "/usr/bin/kitty" ]]; then
-        kitty_status=" ${GREEN}(current)${NC}"
-    elif [[ "$current_bin" == "/usr/bin/alacritty" ]]; then
-        alacritty_status=" ${GREEN}(current)${NC}"
+    # Always-installed terminals (from TERMINAL_TOOLS)
+    command -v kitty      &>/dev/null && terminals+=("Kitty|/usr/bin/kitty")
+    command -v alacritty  &>/dev/null && terminals+=("Alacritty|/usr/bin/alacritty")
+
+    # DE-provided terminals (installed via desktop packages or optional)
+    for check in \
+        "xfce4-terminal|/usr/bin/xfce4-terminal" \
+        "konsole|/usr/bin/konsole" \
+    ; do
+        local name="${check%%|*}"
+        local bin="${check#*|}"
+        command -v "$name" &>/dev/null && terminals+=("${name^}|${bin}")
+    done
+
+    if [[ ${#terminals[@]} -eq 0 ]]; then
+        warn "No terminal emulators found — skipping."
+        return
     fi
-    [[ -n "$current_bin" ]] && keep_status=" ${GREEN}(current: $(basename "$current_bin"))${NC}"
 
-    echo -e "    ${BOLD}1)${NC}  Kitty (GPU-accelerated)${kitty_status}"
-    echo -e "    ${BOLD}2)${NC}  Alacritty${alacritty_status}"
-    echo -e "    ${BOLD}3)${NC}  Keep current${keep_status}"
+    # Display menu
+    local i=1
+    for entry in "${terminals[@]}"; do
+        local label="${entry%%|*}"
+        local bin="${entry#*|}"
+        local marker=""
+        [[ "$current_bin" == "$bin" ]] && marker=" ${GREEN}(current)${NC}"
+        echo -e "    ${BOLD}${i})${NC}  ${label}${marker}"
+        ((i++))
+    done
+    local keep_marker=""
+    [[ -n "$current_bin" ]] && keep_marker=" ${GREEN}($(basename "$current_bin"))${NC}"
+    echo -e "    ${BOLD}0)${NC}  Keep current${keep_marker}"
     echo ""
 
     local reply
-    read -rp "$(echo -e "${YELLOW}[????]${NC}  Choose default terminal [1/2/3]: ")" reply
+    read -rp "$(echo -e "${YELLOW}[????]${NC}  Choose default terminal [0-$((${#terminals[@]}))]: ")" reply
 
-    case "$reply" in
-        1)   OPT_DEFAULT_TERMINAL="kitty"    ; ok "Kitty will be set as default." ;;
-        2)   OPT_DEFAULT_TERMINAL="alacritty" ; ok "Alacritty will be set as default." ;;
-        3|"") OPT_DEFAULT_TERMINAL=""          ; ok "Keeping current terminal emulator." ;;
-        *)   OPT_DEFAULT_TERMINAL=""           ; warn "Invalid selection — keeping current." ;;
-    esac
+    if [[ -z "$reply" || "$reply" == "0" ]]; then
+        OPT_DEFAULT_TERMINAL=""
+        ok "Keeping current terminal emulator."
+        return
+    fi
+
+    if [[ "$reply" =~ ^[0-9]+$ ]] && (( reply >= 1 && reply <= ${#terminals[@]} )); then
+        local chosen="${terminals[$((reply-1))]}"
+        local chosen_name="${chosen%%|*}"
+        local chosen_bin="${chosen#*|}"
+        OPT_DEFAULT_TERMINAL="$chosen_bin"
+        ok "${chosen_name} will be set as default."
+    else
+        OPT_DEFAULT_TERMINAL=""
+        warn "Invalid selection — keeping current."
+    fi
 }
 
 apply_default_terminal() {
@@ -753,27 +786,25 @@ apply_default_terminal() {
         return
     fi
 
-    local chosen="$OPT_DEFAULT_TERMINAL"
-    local bin_path="/usr/bin/${chosen}"
+    local bin_path="$OPT_DEFAULT_TERMINAL"
+    local name
+    name=$(basename "$bin_path")
 
-    if ! command -v "$chosen" &>/dev/null; then
-        warn "${chosen} not found — it should have been installed in the package step."
+    if [[ ! -x "$bin_path" ]]; then
+        warn "${name} not found at ${bin_path} — skipping."
         return
     fi
 
     if update-alternatives --query x-terminal-emulator 2>/dev/null \
             | grep -q "$bin_path"; then
         sudo update-alternatives --set x-terminal-emulator "$bin_path"
-        ok "Default terminal set to ${chosen}."
+        ok "Default terminal set to ${name}."
     else
-        warn "${chosen} not registered in update-alternatives."
-        if [[ "$chosen" == "kitty" ]]; then
-            warn "Run: sudo update-alternatives --install /usr/bin/x-terminal-emulator x-terminal-emulator /usr/bin/kitty 50"
-        fi
+        warn "${name} not registered in update-alternatives."
     fi
 
     # Patch XFCE helpers.rc so exo-open uses the selected terminal too
-    _patch_xfce_helpers_rc "$chosen"
+    _patch_xfce_helpers_rc "$name"
 }
 
 # Update TerminalEmulator in XFCE's helpers.rc.
@@ -1360,18 +1391,19 @@ revert_hidpi() {
 }
 
 # -- Stow pre-cleanup ---------------------------------------------------------
-# Remove existing files/dirs at stow targets so symlinks can be created.
-# Scans the actual dotfiles repo to determine which paths would conflict.
+# Scan the dotfiles repo and check each file's target under $HOME.
+# With --no-folding, stow creates per-file symlinks — so conflicts are
+# individual real files, not directories.
+#
+# When conflicts are found (e.g. XFCE rewrote a config over a symlink),
+# offer two choices:
+#   Adopt — stow --adopt pulls the real file into the repo and recreates
+#           the symlink.  Use `git diff` to review what changed.
+#   Backup — move conflicting files to ~/.stow-backup-<timestamp>/
 
-# Build the conflict list dynamically from what's actually in the repo.
-# With --no-folding, stow deploys individual file symlinks inside real
-# directories.  A conflict is a real (non-symlink) file at the exact
-# target path — we check each file, not directories.
 _build_stow_conflict_paths() {
     STOW_CONFLICT_PATHS=()
 
-    # Find all files in the dotfiles dir that stow would deploy.
-    # Exclude repo-level files that aren't stow targets.
     while IFS= read -r -d '' rel_path; do
         STOW_CONFLICT_PATHS+=("${HOME}/${rel_path}")
     done < <(
@@ -1416,25 +1448,48 @@ cleanup_for_stow() {
         echo "         ${c#"${HOME}"/}"
     done
 
-    if ! ask_yes_no "Back up and remove these so stow can create symlinks?"; then
-        warn "Skipping cleanup. You may need to remove them manually before stow."
-        return
-    fi
+    echo ""
+    echo -e "    ${BOLD}1)${NC}  Adopt — pull changes into dotfiles repo (review with git diff)"
+    echo -e "    ${BOLD}2)${NC}  Backup — move to ~/.stow-backup-<timestamp>/"
+    echo -e "    ${BOLD}0)${NC}  Skip — leave as-is (stow may fail)"
+    echo ""
 
-    local backup_dir="${HOME}/.stow-backup-$(date +%Y%m%d-%H%M%S)"
-    mkdir -p "$backup_dir"
-    info "Backing up to ${backup_dir}/ ..."
+    local reply
+    read -rp "$(echo -e "${YELLOW}[????]${NC}  How to resolve conflicts? [0/1/2]: ")" reply
 
-    for path in "${conflicts[@]}"; do
-        local rel="${path#"${HOME}"/}"
-        local parent
-        parent=$(dirname "$rel")
-        mkdir -p "${backup_dir}/${parent}"
-        mv "$path" "${backup_dir}/${rel}"
-        ok "  moved: ~/${rel}"
-    done
+    case "$reply" in
+        1)
+            info "Adopting conflicting files into dotfiles repo..."
+            cd "$DOTFILES_DIR"
+            stow --no-folding --adopt --ignore='setup-debian13\.sh' -v -t "$HOME" . 2>&1 \
+                | grep -v '^BUG' || true
+            # --adopt replaces repo files with the real files and recreates symlinks.
+            # The repo now has the modified content — review with git diff.
+            ok "Files adopted. Review changes with: cd ${DOTFILES_DIR} && git diff"
+            ;;
+        2)
+            local backup_dir="${HOME}/.stow-backup-$(date +%Y%m%d-%H%M%S)"
+            mkdir -p "$backup_dir"
+            info "Backing up to ${backup_dir}/ ..."
 
-    ok "Backup complete. Paths are clear for stow."
+            for path in "${conflicts[@]}"; do
+                local rel="${path#"${HOME}"/}"
+                local parent
+                parent=$(dirname "$rel")
+                mkdir -p "${backup_dir}/${parent}"
+                mv "$path" "${backup_dir}/${rel}"
+                ok "  moved: ~/${rel}"
+            done
+
+            ok "Backup complete. Paths are clear for stow."
+            ;;
+        0|"")
+            warn "Skipping cleanup. Stow may fail on conflicting files."
+            ;;
+        *)
+            warn "Invalid selection — skipping cleanup."
+            ;;
+    esac
 }
 
 # -- Dotfiles: clone + stow --------------------------------------------------
@@ -1784,8 +1839,6 @@ main() {
     # =========================================================================
     # Phase 1: Gather ALL interactive choices (no apt calls, no side effects)
     # =========================================================================
-    # Repo setup functions (Brave, VS Code) need curl, which may not be
-    # installed yet on a fresh system.  All Q&A happens first, then packages.
 
     # 1. Desktop environment / window manager
     info "--- Desktop Selection ---"
@@ -1837,33 +1890,23 @@ main() {
     install_missing_packages "${ALL_PACKAGES[@]}"
     echo ""
 
-    # 7. Desktop-specific packages (conditional on DE choice)
+    # 7. Desktop-specific packages
     if [[ "$OPT_DESKTOP" == "i3" ]]; then
         info "--- i3 Packages ---"
         install_missing_packages "${I3_PACKAGES[@]}"
         echo ""
     fi
-    if [[ "$OPT_DESKTOP" == "xfce" || "$OPT_DESKTOP" == "both" ]]; then
+    if [[ "$OPT_DESKTOP" == "xfce" ]]; then
         info "--- Xfce Packages ---"
         install_missing_packages "${XFCE_PACKAGES[@]}"
         echo ""
     fi
-    if [[ "$OPT_DESKTOP" == "both" ]]; then
-        info "--- i3 Packages ---"
-        install_missing_packages "${I3_PACKAGES[@]}"
-        echo ""
-    fi
 
-    # LightDM (only for Xfce desktops, and only if user didn't choose to remove it)
-    if [[ "$OPT_DESKTOP" == "xfce" || "$OPT_DESKTOP" == "both" ]]; then
-        if [[ "$OPT_REMOVE_LIGHTDM" != true ]]; then
-            info "--- LightDM ---"
-            install_missing_packages "${LIGHTDM_PACKAGES[@]}"
-            echo ""
-        else
-            ok "Skipping LightDM install (removal was selected)."
-            echo ""
-        fi
+    # LightDM (only for Xfce, and only if user didn't choose to remove it)
+    if [[ "$OPT_DESKTOP" == "xfce" && "$OPT_REMOVE_LIGHTDM" != true ]]; then
+        info "--- LightDM ---"
+        install_missing_packages "${LIGHTDM_PACKAGES[@]}"
+        echo ""
     fi
 
     # 8. Selected optional packages (repos + apt — curl now available)
@@ -1896,7 +1939,7 @@ main() {
     fi
 
     # =========================================================================
-    # Phase 3: Configuration (no interaction except stow cleanup)
+    # Phase 3: Configuration (no interaction except stow conflict resolution)
     # =========================================================================
 
     # 10. Apply default terminal choice
@@ -1954,7 +1997,7 @@ main() {
     fi
     echo ""
 
-    # 17. Stow pre-cleanup (EXCEPTION: interactive backup prompt)
+    # 17. Stow pre-cleanup (interactive — adopt or backup)
     info "--- Stow Pre-Cleanup ---"
     cleanup_for_stow
     echo ""
@@ -1987,7 +2030,7 @@ main() {
     echo ""
 
     # 23. startx + i3 login
-    if [[ "$OPT_DESKTOP" == "i3" || "$OPT_DESKTOP" == "both" || "$OPT_DESKTOP" == "none" ]]; then
+    if [[ "$OPT_DESKTOP" == "i3" || "$OPT_DESKTOP" == "none" ]]; then
         info "--- Console Login → i3 ---"
         setup_startx_login
         echo ""
@@ -1999,9 +2042,20 @@ main() {
     ok "Setup complete!"
     echo ""
     info "Post-install checklist:"
-    if [[ "$OPT_DESKTOP" == "i3" || "$OPT_DESKTOP" == "both" || "$OPT_DESKTOP" == "none" ]]; then
-        echo "  • If this is a fresh install, reboot to use console login → startx → i3"
+
+    # Login / session advice depends on desktop + lightdm state
+    if [[ "$OPT_DESKTOP" == "i3" ]]; then
+        if [[ "$OPT_REMOVE_LIGHTDM" == true ]] || ! dpkg -s lightdm &>/dev/null; then
+            echo "  • Reboot to use console login → startx → i3"
+        else
+            echo "  • Select ${BOLD}i3${NC} at the LightDM login screen"
+        fi
         echo "  • Verify i3 is the default: ${BOLD}sudo update-alternatives --config x-session-manager${NC}"
+    elif [[ "$OPT_DESKTOP" == "xfce" ]]; then
+        if [[ "$OPT_REMOVE_LIGHTDM" == true ]] || ! dpkg -s lightdm &>/dev/null; then
+            echo "  • Reboot to use console login → startx"
+        fi
+        # xfce with lightdm (e.g. Citrix VM) → no login advice needed
     fi
     echo "  • Set GTK theme/icons/fonts: ${BOLD}lxappearance${NC}"
     echo "  • Adjust compositor effects: ${BOLD}picom-conf${NC}"
